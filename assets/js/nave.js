@@ -62,7 +62,7 @@
     "}"].join("\n");
 
   var gl, canvas, prog, progP, U = {}, UP = {}, quadBuf, moteBuf, tex = {}, ready = false;
-  var W = 0, H = 0, dpr = 1, k = 1, hz = 0;
+  var W = 0, H = 0, dpr = 1, k = 1, hz = 0, CW = 0;   // CW: page width in CSS px, kept from the last resize
   var solids = [], lights = [], motes, moteData, NM = 70;
   // P: what journey.js asks for each frame
   var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0 };
@@ -103,9 +103,22 @@
       var img = new Image();
       img.decoding = "async";
       img.onload = function () { upload(img); };
-      img.src = src;
+      afterHero(function () { img.src = src; });
     } else upload(src);
     return o;
+  }
+  // the church's pictures download after the opening photo, so they don't
+  // compete with it on a slow connection (the church appears seconds later)
+  var heroWait = null;
+  function afterHero(fn) {
+    if (!heroWait) {
+      heroWait = [];
+      var go = function () { if (!Array.isArray(heroWait)) return; var q = heroWait; heroWait = { push: function (f) { f(); } }; q.forEach(function (f) { f(); }); };
+      var hero = document.querySelector(".hero__photo");
+      if (!hero || hero.complete) setTimeout(go, 0);
+      else { hero.addEventListener("load", go); hero.addEventListener("error", go); setTimeout(go, 2500); }
+    }
+    heroWait.push(fn);
   }
   // procedural sprites (no download): soft glow, light beam, candle flame
   function sprite(w, h, draw) {
@@ -341,6 +354,7 @@
   /* --------------------------------------------------------- sizing */
   function resize() {
     var cw = host.clientWidth, ch = host.clientHeight;
+    CW = cw;
     var want = Math.min(window.devicePixelRatio || 1, opts.maxDpr || 1.5);
     if (slowFrames > 2) want = Math.min(want, 1.1); else if (slowFrames > 0) want = Math.min(want, 1.3);
     dpr = want;
@@ -358,8 +372,7 @@
     var wx = x, wy = y - M.eye, wz = z - P.camZ, c = Math.cos(P.yaw), s = Math.sin(P.yaw);
     var vx = wx * c - wz * s, vz = wx * s + wz * c;
     if (vz < .05) return null;
-    var cw = host.clientWidth;
-    return { x: cw / 2 + vx * k / vz, y: hz - wy * k / vz, s: k / vz, dz: vz };
+    return { x: CW / 2 + vx * k / vz, y: hz - wy * k / vz, s: k / vz, dz: vz };
   }
 
   // draw one frame with the given camera/light state (called by journey.js)
@@ -426,7 +439,7 @@
   }
 
   // without WebGL, project() still works so cards can be placed
-  function initFallback(el) { host = el; k = Math.min(el.clientWidth * 1.25, el.clientHeight * .6); hz = el.clientHeight * .375; }
+  function initFallback(el) { host = el; CW = el.clientWidth; k = Math.min(el.clientWidth * 1.25, el.clientHeight * .6); hz = el.clientHeight * .375; }
 
   window.Nave = { init: init, draw: draw, project: project, M: M, P: P, initFallback: initFallback, isReady: function () { return ready; } };
 })();

@@ -37,7 +37,7 @@
     if (x < 16.9) return .36;           // the light
     return .42;                         // the finale reveals
   }
-  var REVEAL = 2200;         // ms for the names, date and place to finish fading in (styles.css: .hero__content)
+  var REVEAL = 2000;         // ms for the names, date and place to finish fading in (styles.css: .hero__content)
   var AUTO_START = 1000;     // ms the opening then rests, fully shown, before the journey begins by itself
   var HURRY = 2.8;           // a tap or swipe while the journey moves plays it this much faster, to the next stop
   var REPEAT_INTRO = 2;      // a guest who has seen the opening before gets it this much faster
@@ -234,8 +234,10 @@
     node.style.setProperty(prop, val);
   }
 
+  var VW = 0, VH = 0;   // the screen size, read once per frame before anything is written (no forced layouts)
   function frame(now) {
     requestAnimationFrame(frame);
+    VW = root.clientWidth; VH = window.innerHeight;
     var dt = last ? Math.min(.05, (now - last) / 1000) : .016;
     last = now;
     // the chapter you have swiped to; the timeline plays toward its stop on
@@ -360,7 +362,7 @@
     setStyle(node, key, "opacity", o.toFixed(3));
     setStyle(node, key, "visibility", o > .002 ? "visible" : "hidden");
     if (o > .002) {
-      var c = centre || 0, px = lerp(p.x, root.clientWidth / 2, c), py = lerp(p.y, window.innerHeight * .44, c);
+      var c = centre || 0, px = lerp(p.x, VW / 2, c), py = lerp(p.y, VH * .44, c);
       setStyle(node, key, "transform", "translate3d(" + px.toFixed(1) + "px," + py.toFixed(1) + "px,0) translate(-50%,-50%) scale(" + (at / p.dz).toFixed(4) + ")");
     }
   }
@@ -369,7 +371,7 @@
     var st = c.st, node = c.node, key = "c" + st.id;
     var on = s > st.s0 - .7 && s < st.s1 + .3;
     if (!on) { setStyle(node, key, "visibility", "hidden"); setStyle(node, key, "opacity", "0"); return; }
-    var p = window.Nave.project(st.x, CARD_Y, st.z), vw = root.clientWidth, vh = window.innerHeight;
+    var p = window.Nave.project(st.x, CARD_Y, st.z), vw = VW, vh = VH;
     var h = c.h;
     // a card never needs scrolling inside: if it is taller than the screen
     // (small phones), it is shown slightly smaller, leaving room for "Continue"

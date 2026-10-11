@@ -99,8 +99,14 @@
     var art = C.art || {};
     doc.querySelectorAll("[data-art]").forEach(function (img) {
       var v = art[img.getAttribute("data-art")];
-      if (v) img.src = v;
+      if (v && img.hasAttribute("srcset") && v !== img.getAttribute("src")) img.removeAttribute("srcset");   // config.js wins
       img.decoding = "async";
+      if (!v) return;
+      // pictures needed only at the end load once the page has finished loading
+      if (img.hasAttribute("data-defer") && !reduceMotion.matches) {
+        var later = function () { setTimeout(function () { img.src = v; }, 400); };
+        if (doc.readyState === "complete") later(); else window.addEventListener("load", later);
+      } else img.src = v;
     });
     doc.querySelectorAll("[data-art-srcset]").forEach(function (src) {
       var v = art[src.getAttribute("data-art-srcset")];
@@ -168,6 +174,7 @@
       try { window.Journey.init({ art: C.art || {} }); return; }
       catch (e) { root.classList.remove("journey"); }
     }
+    root.classList.remove("journey");
     root.classList.add("still");
     if (!window.Nave || !nave || !window.Nave.init(nave, { art: C.art || {} })) return;
     // one still view of the lit church, redrawn while its pictures load
@@ -232,7 +239,7 @@
       }
       new IntersectionObserver(function (entries) {
         visible = entries[0].isIntersecting;
-        if (visible) create();
+        if (visible && !trigger) create();      // a slot played by an event loads its player only then
         if (!anim || trigger || still) return;
         if (visible) whenReady(function () { anim.play(); }); else if (cfg.loop) anim.pause();
       }, { rootMargin: "300px 0px" }).observe(trigger ? slot.closest("form") || slot : slot);
@@ -321,17 +328,25 @@
 
   bindContent();
   renderLists();
-  initLottie();
-  initExperience();
-  initCountdown();
-  initMusic();
-  if (window.RSVP) window.RSVP.init(doc.querySelector(".rsvp__form"), C.rsvp || {});
 
   // Lift the curtain once fonts are ready (or after 1.6s, whichever is first)
   var lifted = false;
-  function lift() { if (!lifted) { lifted = true; setTimeout(ready, 350); } }
+  function lift() { if (!lifted) { lifted = true; setTimeout(ready, 150); } }
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(lift);
   setTimeout(lift, 1600);
+
+  // The opening screen first; the church (WebGL) and the rest are built in
+  // separate steps just after, so the phone isn't held up by one long task.
+  // (The journey's page layout is already on from the first paint: index.html.)
+  setTimeout(function () {
+    initExperience();
+    setTimeout(function () {
+      initLottie();
+      initCountdown();
+      initMusic();
+      if (window.RSVP) window.RSVP.init(doc.querySelector(".rsvp__form"), C.rsvp || {});
+    }, 0);
+  }, 0);
 
   // Return to the opening on reload so the cinematic intro plays from the start
   if ("scrollRestoration" in history && !location.hash) history.scrollRestoration = "manual";

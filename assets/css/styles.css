@@ -212,7 +212,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
   transform: translate3d(0, calc(var(--y) * -.2px), 0);
   opacity: calc(1 - var(--y) / 520);
 }
-.hero__eyebrow { font-family: var(--sans); font-weight: 500; font-size: .74rem; letter-spacing: .3em; margin-right: -.3em; text-transform: uppercase; color: var(--gold); text-shadow: 0 1px 12px rgba(0, 0, 0, .9); }
+.hero__eyebrow { font-family: var(--sans); font-weight: 500; font-size: .76rem; letter-spacing: .3em; margin-right: -.3em; text-transform: uppercase; color: var(--gold); text-shadow: 0 1px 12px rgba(0, 0, 0, .9); }
 .hero__title { margin-top: .9rem; display: flex; flex-direction: column; align-items: center; line-height: .92; text-shadow: 0 2px 4px rgba(0, 0, 0, .55), 0 2px 30px rgba(0, 0, 0, .6), 0 0 40px rgba(240, 184, 102, .25); }
 .hero__name { font-size: clamp(3.2rem, 17vw, 7.5rem); letter-spacing: .12em; margin-right: -.12em; color: #FFF8EA; }
 .hero__amp { font-family: var(--script); font-size: clamp(3.6rem, 18vw, 7rem); line-height: .55; color: var(--gold); margin: .02em 0 .08em; position: relative; z-index: 1; }
@@ -222,10 +222,10 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .hero__place { margin-top: .8rem; font-style: italic; font-size: 1.2rem; color: var(--cream); }
 .js .hero__content > * { opacity: 0; transform: translateY(16px); transition: opacity 1.2s var(--ease), transform 1.4s var(--ease-out); }
 .is-ready .hero__content > * { opacity: 1; transform: none; }
-.is-ready .hero__content > :nth-child(2) { transition-delay: .3s; }
-.is-ready .hero__content > :nth-child(3) { transition-delay: .5s; }
-.is-ready .hero__content > :nth-child(4) { transition-delay: .8s; }
-.is-ready .hero__content > :nth-child(5) { transition-delay: 1s; }
+.is-ready .hero__content > :nth-child(2) { transition-delay: .15s; }
+.is-ready .hero__content > :nth-child(3) { transition-delay: .3s; }
+.is-ready .hero__content > :nth-child(4) { transition-delay: .6s; }
+.is-ready .hero__content > :nth-child(5) { transition-delay: .8s; }
 
 .scroll-cue {
   position: absolute; z-index: 3; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -278,7 +278,21 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .lottie { pointer-events: none; opacity: 0; transition: opacity 1s var(--ease); }
 .lottie.is-loaded { opacity: 1; }
 .lottie svg { display: block; }
-.lottie--hero { width: clamp(70px, 18vw, 120px); aspect-ratio: 220 / 128; margin: 0 auto .6rem; filter: drop-shadow(0 0 10px rgba(240, 184, 102, .5)); }
+.rings { display: block; width: clamp(70px, 18vw, 120px); aspect-ratio: 220 / 128; margin: 0 auto .6rem; overflow: visible; filter: drop-shadow(0 0 10px rgba(240, 184, 102, .5)); }
+.rings circle { fill: none; stroke-linecap: round; stroke-dasharray: 1; }
+.rings__o { stroke: #B8955A; stroke-width: 5; }
+.rings__i { stroke: #E3C88F; stroke-width: 1.5; }
+.rings__glint { fill: #FFF1CF; transform-origin: 158px 26px; }
+.js .rings circle { stroke-dashoffset: 1; }
+.js .rings__glint { opacity: 0; }
+/* each ring draws from the top, outer line first, the second ring just after (as the old animation) */
+.is-ready .rings circle { animation: ring-draw 1.13s cubic-bezier(.3, 0, .2, 1) forwards; }
+.is-ready .rings circle:nth-of-type(2) { animation-delay: .27s; }
+.is-ready .rings circle:nth-of-type(3) { animation-delay: .4s; }
+.is-ready .rings circle:nth-of-type(4) { animation-delay: .67s; }
+.is-ready .rings__glint { animation: ring-glint 1.2s ease-out 1.6s forwards; }
+@keyframes ring-draw { to { stroke-dashoffset: 0; } }
+@keyframes ring-glint { 0% { opacity: 0; transform: scale(.3); } 45% { opacity: 1; transform: scale(1.15); } 100% { opacity: .85; transform: scale(1); } }
 .lottie--countdown { width: clamp(90px, 24vw, 140px); aspect-ratio: 1; margin: 0 auto 1rem; }
 .lottie--overlay { position: absolute; inset: 0; z-index: 2; }
 .lottie--rsvp { width: 160px; height: 160px; margin: 0 auto -1rem; display: none; }
@@ -382,12 +396,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261011") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261011"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261011"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261011"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261011"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261011"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261012") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261012"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261012"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261012"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261012"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261012"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
@@ -438,14 +452,14 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .next-hint, .back-hint { position: fixed; z-index: 6; bottom: max(1rem, calc(env(safe-area-inset-bottom) + .4rem)); display: none; align-items: center; margin: 0; border: 0; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .7s var(--ease); -webkit-tap-highlight-color: transparent; }
 .journey .next-hint, .journey .back-hint { display: flex; }
 .next-hint { left: 50%; transform: translateX(-50%); gap: .6rem; padding: .85rem 1.6rem; border-radius: 999px;
-  font-family: var(--sans); font-weight: 500; font-size: .72rem; letter-spacing: .26em; text-transform: uppercase; color: #FFF3DE;
+  font-family: var(--sans); font-weight: 500; font-size: .76rem; letter-spacing: .26em; text-transform: uppercase; color: #FFF3DE;
   background: rgba(20, 13, 7, .62); border: 1px solid rgba(232, 194, 124, .75); box-shadow: 0 6px 24px rgba(0, 0, 0, .45); }
 .next-hint i { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin-left: -.1rem; }
 .next-hint.is-on, .back-hint.is-on { opacity: 1; pointer-events: auto; transition-delay: .4s; }
 .next-hint.is-on { animation: beckon 2.4s ease-in-out 1.2s infinite; }
 @keyframes beckon { 0%, 100% { box-shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 0 0 0 rgba(240, 184, 102, 0); } 50% { box-shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 0 22px 3px rgba(240, 184, 102, .5); } }
 .back-hint { left: max(.9rem, env(safe-area-inset-left)); gap: .4rem; padding: .7rem .5rem; background: none;
-  font-family: var(--sans); font-weight: 500; font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(243, 232, 213, .85); text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
+  font-family: var(--sans); font-weight: 500; font-size: .76rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(243, 232, 213, .85); text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
 .back-hint i { width: 6px; height: 6px; border-left: 1.3px solid currentColor; border-bottom: 1.3px solid currentColor; transform: rotate(45deg); }
 .journey .hero { position: fixed; inset: 0; height: 100%; min-height: 0; z-index: 3; }
 .journey .hero__film, .journey .hero__content { will-change: transform, opacity; }
@@ -488,6 +502,8 @@ html:not(.journey) .nave { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: .001ms !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
   .layer { transform: none !important; }
+  .js .rings circle { stroke-dashoffset: 0; }
+  .js .rings__glint { opacity: .85; }
   .hero__content { opacity: 1; }
 }
 .still .topbar__mark { display: none; }
