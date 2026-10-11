@@ -396,12 +396,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261012") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261012"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261012"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261012"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261012"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261012"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261013") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261013"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261013"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261013"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261013"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261013"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */

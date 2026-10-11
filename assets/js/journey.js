@@ -38,9 +38,9 @@
     return .42;                         // the finale reveals
   }
   var REVEAL = 2000;         // ms for the names, date and place to finish fading in (styles.css: .hero__content)
-  var AUTO_START = 1000;     // ms the opening then rests, fully shown, before the journey begins by itself
+  var AUTO_START = 1800;     // ms the opening then rests, fully shown, before the journey begins by itself
   var HURRY = 2.8;           // a tap or swipe while the journey moves plays it this much faster, to the next stop
-  var REPEAT_INTRO = 2;      // a guest who has seen the opening before gets it this much faster
+  var REPEAT_INTRO = 1;      // opening speed for a guest who has seen it before (1 = the same as the first time)
   var HOLD = 2.35;           // metres between camera and a card while you read it
   var CARD_Y = 1.5;          // card height above the floor (metres)
 

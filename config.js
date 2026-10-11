@@ -116,8 +116,8 @@ window.WEDDING = {
   // assets/js/nave.js from these textures (all in assets/images/nave/).
   // Replace a file to change a surface; keep the pixel size (powers of two).
   art: {
-    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261012",   // opening picture on phones
-    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261012",  // opening picture on wide screens
+    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261013",   // opening picture on phones
+    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261013",  // opening picture on wide screens
     floor:  "assets/images/nave/floor.webp",    // polished stone tiles (repeats)
     carpet: "assets/images/nave/carpet.webp",   // aisle runner (repeats)
     wall:   "assets/images/nave/wall.webp",     // nave wall: arcade, triforium, clerestory (one bay, repeats)
@@ -127,7 +127,7 @@ window.WEDDING = {
     pew:    "assets/images/nave/pew.webp",      // pew back
     pewend: "assets/images/nave/pewend.webp",   // carved pew end
     altar:  "assets/images/nave/altar.webp",    // far wall: rose window, altar, candles
-    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261012", // the couple at the end; fades in over the church
+    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261013", // the couple at the end; fades in over the church
     // The opening picture is the top of the couple's collage, fading into the
     // dark where the names sit (the bottom panels are left out). Both photos
     // must be ones you own or have permission to use.
