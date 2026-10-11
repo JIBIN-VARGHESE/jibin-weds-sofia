@@ -398,9 +398,20 @@
     host = el; opts = o || {};
     canvas = document.createElement("canvas");
     canvas.className = "nave__gl";
-    var ctxOpts = { alpha: false, antialias: (window.devicePixelRatio || 1) < 1.5, depth: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: "high-performance" };
+    // failIfMajorPerformanceCaveat: no WebGL when it would be drawn in software
+    // (devices without a usable graphics chip, test robots like PageSpeed):
+    // 60 frames a second on the processor stutters badly, so those get the
+    // still picture of the church instead, and the journey runs over it.
+    var ctxOpts = { alpha: false, antialias: (window.devicePixelRatio || 1) < 1.5, depth: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: "high-performance", failIfMajorPerformanceCaveat: true };
     try { gl = canvas.getContext("webgl", ctxOpts) || canvas.getContext("experimental-webgl", ctxOpts); } catch (e) { gl = null; }
     if (!gl) { host.classList.add("nave--still"); return false; }
+    // some software renderers don't report the caveat: recognise them by name
+    var info = gl.getExtension("WEBGL_debug_renderer_info");
+    var renderer = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
+    if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)) {
+      var lose = gl.getExtension("WEBGL_lose_context"); if (lose) lose.loseContext();
+      gl = null; host.classList.add("nave--still"); return false;
+    }
     host.insertBefore(canvas, host.firstChild);
     try {
       prog = compile(VS, FS); progP = compile(VS_P, FS_P);
