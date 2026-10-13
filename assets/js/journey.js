@@ -376,7 +376,9 @@
     // a card never needs scrolling inside: if it is taller than the screen
     // (small phones), it is shown slightly smaller, leaving room for "Continue"
     if (!c.ht || c.vh !== vh) { c.ht = node.offsetHeight; c.vh = vh; }
-    var fit = Math.min(1, (vh - 110) / Math.max(1, c.ht));
+    // on big landscape screens the cards are shown up to 30% larger
+    var big = vw > vh && vw >= 900 && vh >= 560 ? clamp(vh / 760, 1, 1.3) : 1;
+    var fit = Math.min(big, (vh - 110) / Math.max(1, c.ht));
     var x, y, sc, o;
     if (p) {
       x = lerp(p.x, vw / 2, h); y = lerp(p.y, vh / 2 - 24, h); sc = lerp(HOLD / p.dz * fit, fit, h);
@@ -388,7 +390,7 @@
     o = Math.max(o * ss(.12, .6, h), h) * away;
     setStyle(node, key, "visibility", o > .002 ? "visible" : "hidden");
     setStyle(node, key, "opacity", o.toFixed(3));
-    setStyle(node, key, "transform", "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) translate(-50%,-50%) scale(" + Math.min(sc, 1.3).toFixed(4) + ")");
+    setStyle(node, key, "transform", "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) translate(-50%,-50%) scale(" + Math.min(sc, 1.3 * big).toFixed(4) + ")");
     // the words inside reveal one after another once the card has settled
     var held = h > .97;
     if (held !== c.held) { c.held = held; node.classList.toggle("is-held", held); }

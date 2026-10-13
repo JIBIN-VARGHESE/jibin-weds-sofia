@@ -173,7 +173,9 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .nave { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; overflow: hidden; background: #060403; opacity: 0; pointer-events: none; }
 .nave > * { position: absolute; }
 .nave__gl { inset: 0; width: 100%; height: 100%; display: block; }
-.nave--still { background: #060403 url("../images/nave/altar.webp") 50% 40% / auto 120% no-repeat; }
+.nave--still { background: #060403; }
+.nave--still::before, .nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/altar.webp") 50% 40% / auto 120% no-repeat; }
+.nave--still::before { inset: -60px; background-size: cover; filter: blur(30px) brightness(.38); }
 .nave__vignette { inset: 0; z-index: 5; background: radial-gradient(130% 95% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
 
 /* ======================================================= HERO (film) */
@@ -396,12 +398,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261014") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261014"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261014"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261014"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261014"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261014"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261015") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261015"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261015"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261015"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261015"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261015"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
@@ -496,6 +498,23 @@ html:not(.journey) .nave { opacity: 1; }
   .hero__amp { line-height: 1; margin: 0 .42em 0 .3em; font-size: clamp(3.6rem, min(9vw, 15vh), 8rem); }
   .finale__photo img { object-fit: contain; object-position: 50% 0; }
   .finale__text { padding-top: 6svh; }
+}
+
+/* ======================================================== Desktops
+   Wide screens only (phones keep the layout above): the photos stand in a
+   left-hand panel at full height and the words sit beside them. */
+@media (min-aspect-ratio: 1/1) and (min-width: 900px) and (min-height: 560px) {
+  .hero__film { right: 45%; -webkit-mask-image: linear-gradient(90deg, #000 72%, transparent); mask-image: linear-gradient(90deg, #000 72%, transparent); }
+  .hero__photo { object-fit: cover; object-position: 50% 0; }
+  .hero__shade { background: linear-gradient(180deg, rgba(14, 10, 7, .35), rgba(14, 10, 7, 0) 18%, rgba(14, 10, 7, 0) 70%, rgba(14, 10, 7, .6)); }
+  .hero__content { left: 52%; right: 0; top: 0; bottom: 0; justify-content: center; padding: 0 4vw; }
+  .hero__title { flex-direction: column; }
+  .hero__name { font-size: clamp(3rem, min(6.4vw, 12vh), 7.5rem); }
+  .hero__amp { line-height: .55; margin: .02em 0 .08em; font-size: clamp(3.6rem, min(7vw, 13vh), 8rem); }
+  .finale__photo { right: 50%; -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent); mask-image: linear-gradient(90deg, #000 70%, transparent); }
+  .finale__photo img { object-fit: cover; object-position: 57% 42%; }
+  .finale__text { left: 50%; top: 0; align-content: center; padding: 0 5vw; background: none; }
+  .finale__names { font-size: clamp(2.3rem, 3.8vw, 4.4rem); }
 }
 
 /* ================================================ Reduced motion */
