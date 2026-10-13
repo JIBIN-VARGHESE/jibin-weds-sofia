@@ -1,5 +1,5 @@
 /* =============================================================================
-   Jibin Varghese & Sofia John — styles
+   Sofia John & Jibin Varghese — styles
    Direction: "walking down the aisle". After the opening film, a fixed church
    interior (.nave, drawn in WebGL by nave.js) sits behind the whole page and
    the camera walks down the aisle as you scroll. Information floats over it
@@ -347,6 +347,9 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .invite__lines { margin: .3rem 0 .4rem; font-size: 1.12rem; line-height: 1.45; }
 .invite__names { display: flex; flex-direction: column; align-items: center; font-size: 1.42rem; line-height: 1.15; letter-spacing: .1em; }
 .invite__names span { white-space: nowrap; margin-right: -.1em; }
+/* the parents, in small italics under each name */
+.invite__parents { display: block; max-width: 18rem; margin: .2rem auto .15rem; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: .98rem; line-height: 1.3; letter-spacing: 0; text-transform: none; text-wrap: balance; color: var(--fg-soft); }
+.invite__parents:empty { display: none; }
 .invite__names em { font-family: var(--script); font-style: normal; text-transform: none; letter-spacing: 0; font-size: 1.5em; line-height: .85; color: #6B4413; }
 
 /* countdown and reply, inside cards */
@@ -374,7 +377,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
    is painted with a gradient of its own colour clipped to its letters,
    which those modes treat like a picture and leave as it is. Everywhere
    else it looks exactly like plain text. */
-.card :is(.eyebrow, .invite__lines, .invite__names span, .invite__names em, .card__title, .card__title em,
+.card :is(.eyebrow, .invite__lines, .invite__names span, .invite__names em, .invite__parents, .card__title, .card__title em,
   .card__date b, .card__date > span, .card__place, .card__text, .card__meta, .card__foot, .card__bigdate,
   .card__venue, .card__time, .card__addr, .countdown__num, .countdown__lbl, .field > label, .field legend,
   .field label span, .field__error, .rsvp__status, .btn:not(.btn--solid) > span) {
@@ -398,12 +401,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261015") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261015"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba) { background-image: url("../images/card/ink-soft.webp?v=20261015"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261015"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261015"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261015"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261016") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261016"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261016"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261016"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261016"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261016"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
@@ -463,6 +466,18 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .back-hint { left: max(.9rem, env(safe-area-inset-left)); gap: .4rem; padding: .7rem .5rem; background: none;
   font-family: var(--sans); font-weight: 500; font-size: .76rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(243, 232, 213, .85); text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
 .back-hint i { width: 6px; height: 6px; border-left: 1.3px solid currentColor; border-bottom: 1.3px solid currentColor; transform: rotate(45deg); }
+/* during the opening, which plays by itself: a quiet line and a slim
+   progress bar where "Continue" will appear; it glows if someone scrolls */
+.intro-hint { position: fixed; z-index: 6; left: 50%; bottom: max(1.3rem, calc(env(safe-area-inset-bottom) + .6rem)); transform: translateX(-50%);
+  display: none; flex-direction: column; align-items: center; gap: .55rem; margin: 0; width: max-content; max-width: calc(100vw - 2rem);
+  font-family: var(--serif); font-style: italic; font-size: 1.08rem; color: rgba(255, 243, 222, .88); text-align: center; text-shadow: 0 1px 10px rgba(0, 0, 0, .9);
+  opacity: 0; pointer-events: none; transition: opacity .8s var(--ease); }
+.journey .intro-hint { display: flex; }
+.is-ready .intro-hint.is-on { opacity: 1; transition-delay: .6s; }
+.intro-hint i { display: block; width: 120px; height: 1px; background: rgba(232, 194, 124, .3); overflow: hidden; }
+.intro-hint b { display: block; height: 100%; background: var(--candle); box-shadow: 0 0 6px var(--candle); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+.intro-hint.is-nudge span { animation: nudge 1.4s var(--ease); }
+@keyframes nudge { 0%, 100% { color: rgba(255, 243, 222, .88); text-shadow: 0 1px 10px rgba(0, 0, 0, .9); } 30% { color: #FFE2A8; text-shadow: 0 0 18px rgba(240, 184, 102, .9), 0 1px 10px rgba(0, 0, 0, .9); } }
 .journey .hero { position: fixed; inset: 0; height: 100%; min-height: 0; z-index: 3; }
 .journey .hero__film, .journey .hero__content { will-change: transform, opacity; }
 .journey .scenes { position: fixed; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
@@ -506,7 +521,7 @@ html:not(.journey) .nave { opacity: 1; }
 @media (min-aspect-ratio: 1/1) and (min-width: 900px) and (min-height: 560px) {
   .hero__film { right: 45%; -webkit-mask-image: linear-gradient(90deg, #000 72%, transparent); mask-image: linear-gradient(90deg, #000 72%, transparent); }
   .hero__photo { object-fit: cover; object-position: 50% 0; }
-  .hero__shade { background: linear-gradient(180deg, rgba(14, 10, 7, .35), rgba(14, 10, 7, 0) 18%, rgba(14, 10, 7, 0) 70%, rgba(14, 10, 7, .6)); }
+  .hero__shade { background: linear-gradient(180deg, rgba(14, 10, 7, .35), rgba(14, 10, 7, 0) 18%, rgba(14, 10, 7, 0) 58%, rgba(14, 10, 7, .88) 78%, var(--sanctuary)); }
   .hero__content { left: 52%; right: 0; top: 0; bottom: 0; justify-content: center; padding: 0 4vw; }
   .hero__title { flex-direction: column; }
   .hero__name { font-size: clamp(3rem, min(6.4vw, 12vh), 7.5rem); }

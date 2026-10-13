@@ -1,5 +1,5 @@
 /* =============================================================================
-   Jibin & Sofi — main script
+   Sofia & Jibin — main script
    1. Content binding from config.js
    2. The journey (assets/js/journey.js), or a calm static page
    4. Countdown (Asia/Kolkata, IST = UTC+05:30)
@@ -68,7 +68,9 @@
     receptionMapsUrl: W.receptionMapsUrl || W.churchMapsUrl,
     weddingVenueFull: [W.churchName, W.churchAddress].filter(Boolean).join(", ") || tba("Venue details to follow"),
     receptionVenueFull: [W.receptionVenue, W.receptionAddress].filter(Boolean).join(", ") || tba("Venue details to follow"),
-    rsvpDeadline: R.deadline ? "Kindly reply by " + (function (d) { return d.d + " " + d.month + " " + d.y; })(parseDate(R.deadline)) + "." : "We would be grateful for your reply.",
+    rsvpDeadline: R.deadline ? "Kindly reply by " + (function (d) { return d.d + " " + d.month + " " + d.y; })(parseDate(R.deadline)) + "." : "Your reply helps us plan the day.",
+    brideParentsLine: C.couple && C.couple.brideParents ? "daughter of " + C.couple.brideParents : "",
+    groomParentsLine: C.couple && C.couple.groomParents ? "son of " + C.couple.groomParents : "",
     weddingWeekdayShort: wd.weekday.slice(0, 3), weddingMonthShort: wd.month.slice(0, 3),
     countdownNote: wd.weekday + ", " + wd.d + " " + wd.month + " " + wd.y + " · " + (W.town || ""),
   };
@@ -122,7 +124,7 @@
       var v = scenes[src.getAttribute("data-scene-srcset")];
       if (v) src.srcset = v; else src.remove();
     });
-    var names = (C.couple ? (C.couple.groomFull || C.couple.groom) + " & " + (C.couple.brideFull || C.couple.bride) : "") + " · " + derived.weddingDateShort;
+    var names = (C.couple ? (C.couple.brideFull || C.couple.bride) + " & " + (C.couple.groomFull || C.couple.groom) : "") + " · " + derived.weddingDateShort;
     if (C.couple) doc.title = names;
   }
 

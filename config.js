@@ -1,5 +1,5 @@
 /* =============================================================================
-   JIBIN & SOFI — WEDDING CONFIGURATION
+   SOFIA & JIBIN — WEDDING CONFIGURATION
    -----------------------------------------------------------------------------
    This is the ONLY file you need to edit to change wedding information.
 
@@ -16,24 +16,27 @@ window.WEDDING = {
 
   /* ---------------------------------------------------------------- COUPLE */
   couple: {
-    groom: "Jibin",                 // short names: opening screen & closing
-    bride: "Sofi",
-    groomFull: "Jibin Varghese",    // full names: invitation card
-    brideFull: "Sofia John",
-    // Small monogram letters shown in the corner and on the closing screen.
-    monogram: ["J", "S"],
+    // Shown in this order everywhere: the bride first, then the groom.
+    bride: "Sofia",                 // short names: opening screen & closing
+    groom: "Jibin",
+    brideFull: "Sofia John",        // full names: invitation card
+    groomFull: "Jibin Varghese",
+    // Parents, under each name on the invitation card ("" to leave out).
+    brideParents: "Mr. Saji & Mrs. Mini",
+    groomParents: "Mr. Varghese K. V. & Mrs. Aswathy Varghese",
+    // Small monogram letters shown in the corner and on the opening curtain.
+    monogram: ["S", "J"],
   },
 
   /* ---------------------------------------------------------------- INVITE */
   invitation: {
-    eyebrow: "You are invited",
+    eyebrow: "With God's blessing",
     welcome: "In the presence of God and our families…",   // first words as the church wakes
-    // Each array item is rendered as its own line.
+    // Each array item is rendered as its own line (the names follow).
     lines: [
-      "By the grace of God,",
-      "together with our families,",
+      "Together with our families,",
       "we joyfully invite you",
-      "to celebrate our marriage.",
+      "to the wedding of",
     ],
 
   },
@@ -57,8 +60,8 @@ window.WEDDING = {
     address: "",                   // full street address
     mapsUrl: "https://www.google.com/maps/search/?api=1&query=Pandalam%2C+Kerala", // ← PLACEHOLDER: paste the venue's Google Maps link
     description:
-      "A gathering of prayer and blessing, and the exchanging of rings, " +
-      "shared with the families and friends who have shaped us.",
+      "An evening of prayer and blessing as we exchange rings, " +
+      "with the family and friends who shaped us.",
   },
 
   /* ---------------------------------------------------------------- WEDDING */
@@ -116,8 +119,8 @@ window.WEDDING = {
   // assets/js/nave.js from these textures (all in assets/images/nave/).
   // Replace a file to change a surface; keep the pixel size (powers of two).
   art: {
-    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261015",   // opening picture on phones
-    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261015",  // opening picture on wide screens
+    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261016",   // opening picture on phones
+    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261016",  // opening picture on wide screens
     floor:  "assets/images/nave/floor.webp",    // polished stone tiles (repeats)
     carpet: "assets/images/nave/carpet.webp",   // aisle runner (repeats)
     wall:   "assets/images/nave/wall.webp",     // nave wall: arcade, triforium, clerestory (one bay, repeats)
@@ -127,7 +130,7 @@ window.WEDDING = {
     pew:    "assets/images/nave/pew.webp",      // pew back
     pewend: "assets/images/nave/pewend.webp",   // carved pew end
     altar:  "assets/images/nave/altar.webp",    // far wall: rose window, altar, candles
-    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261015", // the couple at the end; fades in over the church
+    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261016", // the couple at the end; fades in over the church
     // The opening picture is the top of the couple's collage, fading into the
     // dark where the names sit (the bottom panels are left out). Both photos
     // must be ones you own or have permission to use.
@@ -154,7 +157,7 @@ window.WEDDING = {
 
   /* ---------------------------------------------------------------- CLOSING */
   closing: {
-    line: "Your presence would make our celebration complete.",
+    line: "Your presence and prayers would make our day complete.",
     signoff: "\u201CWhat God has joined together, let no one separate.\u201D",
     signoffRef: "Mark 10:9",
   },

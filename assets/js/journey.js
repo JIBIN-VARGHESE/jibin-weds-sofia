@@ -71,7 +71,7 @@
   ];
 
   var doc = document, root = doc.documentElement;
-  var settled = 0, intro = false, introGo = false, resting = false, boost = 1, introBoost = 1;
+  var settled = 0, intro = false, introGo = false, resting = false, boost = 1, introBoost = 1, readyAt = 0;
   var el = {}, cards = [], camAt, sm = 0, vel = 0, last = 0, dust = null, opts = {}, chapter = 0;
 
   /* ---------------------------------------------------------- helpers */
@@ -112,13 +112,20 @@
     if (Math.abs(i - settled) > 1) i = settled + (i > settled ? 1 : -1);
     chapter = i;
   }
-  // input while the journey moves is never lost: it hurries the move along
+  // the opening plays by itself: a scroll or tap during it only makes the
+  // "sit back" line glow, so guests see there is nothing to do yet
+  function nudge() {
+    if (!el.intro) return;
+    el.intro.classList.remove("is-nudge"); void el.intro.offsetWidth; el.intro.classList.add("is-nudge");
+  }
+  // after the opening, input while the journey moves is never lost: it hurries the move along
   function hurry() {
-    if (intro && !introGo) { introGo = true; return; }       // a tap on the opening photo starts it
+    if (intro) return nudge();
     boost = HURRY;
   }
   function next() {
-    if (intro || (!resting && STOPS[chapter] > sm)) return hurry();
+    if (intro) return nudge();
+    if (!resting && STOPS[chapter] > sm) return hurry();
     if (resting) goTo(settled + 1);
   }
   function back() {
@@ -133,6 +140,7 @@
     el.scroller = doc.querySelector(".scroller");
     el.hint = doc.querySelector(".next-hint");
     el.back = doc.querySelector(".back-hint");
+    el.intro = doc.querySelector(".intro-hint");
     if (el.hint) el.hint.addEventListener("click", next);
     if (el.back) el.back.addEventListener("click", back);
     // a single deliberate swipe (or wheel / arrow key) counts as one tap
@@ -215,7 +223,6 @@
     // swipe or key on the photo starts it early; during it, the same hurries it.
     intro = chapter === 0;
     try { if (localStorage.getItem("journey-seen")) introBoost = REPEAT_INTRO; } catch (e) {}
-    var readyAt = 0;
     (function autostart() {
       if (!intro || introGo) return;
       if (!readyAt && root.classList.contains("is-ready")) readyAt = Date.now();
@@ -276,6 +283,12 @@
     if (el.mark) el.mark.classList.toggle("is-away", s > .8);
     if (el.progress) setStyle(el.progress, "pg", "--progress", clamp(s / TOTAL, 0, 1).toFixed(4));
 
+    // the opening's "sit back" line, with its progress: the photo's rest, then the walk in
+    if (el.intro) {
+      el.intro.classList.toggle("is-on", intro);
+      var ip = !intro ? 1 : introGo ? .15 + .85 * clamp(sm / STOPS[1], 0, 1) : .15 * (readyAt ? clamp((Date.now() - readyAt) / (REVEAL + AUTO_START), 0, 1) : 0);
+      setStyle(el.intro, "ih", "--p", ip.toFixed(3));
+    }
     // a quiet "swipe up" cue whenever the journey rests and there is more
     if (el.hint) {
       var showHint = resting && !intro && chapter > 0 && chapter < STOPS.length - 1;
