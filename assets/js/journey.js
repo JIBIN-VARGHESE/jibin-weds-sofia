@@ -312,7 +312,9 @@
     var finaleOn = s > 16.6;
     if (window.Nave) {
       window.Nave.P.yaw = yaw;
-      if (!finaleOn || s < 17.6) window.Nave.draw(now, { camZ: camZ, yaw: yaw, expo: .04 + .96 * lightUp, ignite: ss(1.05, 2.6, s), win: ss(1.8, 2.9, s), bloom: bloom });
+      // the church steps back (dims) while a card or words are in front of it
+      var dim = Math.max(holdAny, bump(1.15, 1.45, 2.05, 2.35, s), bump(2.35, 2.9, 3.2, 3.6, s), bump(5.6, 6.0, 6.75, 7.1, s));
+      if (!finaleOn || s < 17.6) window.Nave.draw(now, { camZ: camZ, yaw: yaw, expo: .04 + .96 * lightUp, ignite: ss(1.05, 2.6, s), win: ss(1.8, 2.9, s), bloom: bloom, dim: dim });
     }
     setStyle(el.nave, "nv", "visibility", s > 17.6 ? "hidden" : "visible");
 

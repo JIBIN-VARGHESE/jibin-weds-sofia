@@ -86,7 +86,7 @@ Keep each JSON under about 300 KB, because big animations make phones stutter. G
 
 ## 3. Music
 
-Put an MP3 at `assets/music/wedding.mp3`. The music button appears only once that file exists. Music never autoplays: mobile browsers block it, and it's impolite. Guests tap **Music** to start it. Set `music.enabled: false` to remove the button. Only use music you have the right to share.
+Put an MP3 at `assets/music/wedding.mp3`. The music plays by itself and the button top right pauses it (once paused, it stays paused). Browsers don't let a page start sound before the visitor touches it (iPhones never do), so it starts at once where allowed and otherwise on the guest's first tap anywhere. Set `music.enabled: false` to turn it off. Only use music you have the right to share.
 
 ## 4. Connecting RSVP (all free tiers)
 

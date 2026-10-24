@@ -54,6 +54,7 @@
     "uniform vec3 uEye, uAmb, uSunD, uSunC, uHaze;",
     "uniform vec4 uLP[8]; uniform vec3 uLC[8];",
     "uniform float uExpo, uFog;",
+    "uniform vec2 uGrade;  // x: saturation, y: brightness",
     "varying vec3 vP, vN; varying vec2 vU; varying float vA;",
     "void main(){",
     "  vec3 n = normalize(vN);",
@@ -96,6 +97,8 @@
     "  col *= uExpo;",
     // a filmic curve: deep shadows, warm soft highlights
     "  col = clamp((col * (2.51 * col + .03)) / (col * (2.43 * col + .59) + .14), 0., 1.);",
+    // a muted grade, so the words over the church stay easy to read
+    "  col = mix(dot(col, vec3(.2126, .7152, .0722)) * vec3(1.06, .96, .82), col, uGrade.x) * uGrade.y;",
     "  gl_FragColor = vec4(col, 1.);",
     "}"].join("\n");
   // light: camera-facing or world quads (beams, glows, flames, pools), additive
@@ -144,7 +147,9 @@
   var W = 0, H = 0, dpr = 1, k = 1, hz = 0, CW = 0;   // CW: page width in CSS px, kept from the last resize
   var lights = [], points = [], motes, moteData, NM = 70, draws = [];
   // P: what journey.js asks for each frame
-  var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0 };
+  // dim: 0..1, how much words are on screen (the church steps back behind them)
+  var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0, dim: 0 };
+  var SAT = .68, BRIGHT = .86, DIM = .3;   // the church's colour grade
   var opts = {}, dirty = true, slowFrames = 0, host, lastDraw = 0, lastKey = "", acc = 0, accN = 0;
 
   /* ------------------------------------------------------------- setup */
@@ -803,7 +808,7 @@
     ["marble", [1.05, 1.02, 1], "marble", 1, 1 / 2.4, .5, 60, 0, 0],
     ["niche", [1, 1, 1], "niche", 2, 1, .2, 20, .25, 0],
     ["frontal", [1, 1, 1], "frontal", 2, 1, .15, 16, .05, 0],
-    ["carpet", [.6, .55, .55], "carpet", 2, 1, .05, 6, 0, 0],
+    ["carpet", [.5, .47, .47], "carpet", 2, 1, .05, 6, 0, 0],
     ["floor", [.95, .95, .95], "marble", 3, 1 / 2.4, .55, 80, 0, 0],
     ["vault", [1.04, 1, .95], "stone", 1, .5, .02, 8, 0, 0],
     ["stars", [1, 1, 1], "stars", 1, .45, .3, 20, .1, 0],
@@ -881,6 +886,8 @@
     gl.uniform3f(UB.Haze, .07, .05, .036);
     gl.uniform1f(UB.Fog, .022);
     gl.uniform1f(UB.Expo, P.expo);
+    var grade = BRIGHT * (1 - DIM * P.dim);
+    gl.uniform2f(UB.Grade, SAT + (1 - SAT) * P.bloom, grade + (1 - grade) * P.bloom);
     gl.enableVertexAttribArray(UB.aP); gl.enableVertexAttribArray(UB.aN); gl.enableVertexAttribArray(UB.aU); gl.enableVertexAttribArray(UB.aA);
     var curMat = null;
     boundTex = null;
@@ -915,7 +922,7 @@
     gl.uniform3f(U.Cam, 0, M.eye, cam);
     gl.uniform4fv(U.Proj, proj);
     gl.uniform2f(U.Yaw, yc, ys);
-    gl.uniform1f(U.Expo, 1);
+    gl.uniform1f(U.Expo, (grade + (1 - grade) * P.bloom) * .9);
     gl.enable(gl.BLEND);
     gl.depthMask(false);
     gl.blendFunc(gl.ONE, gl.ONE);
@@ -946,7 +953,7 @@
     // dust in the light
     gl.useProgram(progP);
     gl.uniform3f(UP.Cam, 0, M.eye, cam); gl.uniform4fv(UP.Proj, proj); gl.uniform1f(UP.Px, k * dpr);
-    gl.uniform2f(UP.Yaw, yc, ys); gl.uniform1f(UP.Expo, P.expo * (.4 + .6 * P.win));
+    gl.uniform2f(UP.Yaw, yc, ys); gl.uniform1f(UP.Expo, P.expo * (.4 + .6 * P.win) * grade);
     for (i = 0; i < NM; i++) {
       var m = motes[i];
       var zz = cam + .6 + (((m.z - cam) % 14) + 14) % 14;
@@ -993,7 +1000,7 @@
   function draw(now, p) {
     if (!ready) return;
     for (var key in p) P[key] = p[key];
-    var sig = [P.camZ.toFixed(4), P.yaw.toFixed(4), P.expo.toFixed(3), P.ignite.toFixed(3), P.win.toFixed(3), P.bloom.toFixed(3)].join();
+    var sig = [P.camZ.toFixed(4), P.yaw.toFixed(4), P.expo.toFixed(3), P.ignite.toFixed(3), P.win.toFixed(3), P.bloom.toFixed(3), P.dim.toFixed(3)].join();
     var moving = sig !== lastKey;
     lastKey = sig;
     // at rest only the candles and dust move: ~24 redraws a second is plenty
@@ -1033,7 +1040,7 @@
     U.aQ = gl.getAttribLocation(prog, "aQ");
     ["O", "U", "V", "Cam", "UV", "Proj", "Tint", "Fog", "Cut", "T", "Yaw", "Expo"].forEach(function (n) { U[n] = gl.getUniformLocation(prog, "u" + n); });
     ["aP", "aN", "aU", "aA"].forEach(function (n) { UB[n] = gl.getAttribLocation(progB, n); });
-    ["Cam", "Proj", "Yaw", "T", "Alb", "Mat", "Metal", "Eye", "Amb", "SunD", "SunC", "Haze", "Expo", "Fog"].forEach(function (n) { UB[n] = gl.getUniformLocation(progB, "u" + n); });
+    ["Cam", "Proj", "Yaw", "T", "Alb", "Mat", "Metal", "Eye", "Amb", "SunD", "SunC", "Haze", "Expo", "Fog", "Grade"].forEach(function (n) { UB[n] = gl.getUniformLocation(progB, "u" + n); });
     UB.LP = gl.getUniformLocation(progB, "uLP[0]"); UB.LC = gl.getUniformLocation(progB, "uLC[0]");
     UP.aP = gl.getAttribLocation(progP, "aP");
     ["Cam", "Proj", "Px", "Yaw", "Expo"].forEach(function (n) { UP[n] = gl.getUniformLocation(progP, "u" + n); });

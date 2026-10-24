@@ -347,15 +347,46 @@
   }
 
   /* -------------------------------------------------------- 6. music */
+  // The music plays by itself; the button pauses it. Browsers don't let a
+  // page start sound before the visitor has touched it (iPhones never do),
+  // so it is tried at once and otherwise starts on the first tap or key.
+  // Once a guest pauses, it stays paused.
   function initMusic() {
     var M = C.music || {};
     var btn = doc.querySelector(".music"), audio = doc.querySelector(".music__audio");
     if (!btn || !audio || !M.enabled || !M.src) return;
+    var userPaused = false, hiddenPaused = false, armed = false;
+
+    function setState(playing) {
+      btn.classList.toggle("is-playing", playing);
+      btn.setAttribute("aria-pressed", String(playing));
+      btn.setAttribute("aria-label", playing ? "Pause music" : "Play music");
+      btn.querySelector(".music__label").textContent = playing ? "Pause" : "Play";
+    }
+    function play() {
+      var p = audio.play();
+      if (p && p.then) return p.then(function () { setState(true); return true; }, function () { setState(false); return false; });
+      setState(!audio.paused);
+      return Promise.resolve(!audio.paused);
+    }
+    // the first tap, click or key anywhere starts it (unless the guest has paused it)
+    var GESTURES = ["pointerup", "touchend", "click", "keydown"];
+    function onGesture(e) {
+      if (userPaused || !audio.paused) return disarm();
+      if (e && e.target && e.target.closest && e.target.closest(".music")) return;   // the button handles itself
+      play().then(function (ok) { if (ok) disarm(); });
+    }
+    function arm() { if (armed) return; armed = true; GESTURES.forEach(function (n) { doc.addEventListener(n, onGesture, true); }); }
+    function disarm() { if (!armed) return; armed = false; GESTURES.forEach(function (n) { doc.removeEventListener(n, onGesture, true); }); }
 
     function enable() {
       btn.hidden = false;
       audio.src = M.src;
+      audio.preload = "auto";
       audio.volume = M.volume != null ? M.volume : 0.5;
+      setState(false);
+      arm();
+      play().then(function (ok) { if (ok) disarm(); });
     }
     // Only show the control if the file actually exists (skipped on file://).
     if (location.protocol.indexOf("http") === 0 && window.fetch) {
@@ -364,23 +395,16 @@
       enable();
     }
 
-    function setState(playing) {
-      btn.classList.toggle("is-playing", playing);
-      btn.setAttribute("aria-pressed", String(playing));
-      btn.querySelector(".music__label").textContent = playing ? "Pause" : "Music";
-    }
     btn.addEventListener("click", function () {
-      if (audio.paused) {
-        var p = audio.play(); // user gesture — allowed by mobile browsers
-        if (p && p.then) p.then(function () { setState(true); }).catch(function () { btn.classList.add("is-error"); });
-        else setState(true);
-      } else {
-        audio.pause(); setState(false);
-      }
+      if (audio.paused) { userPaused = false; play(); }
+      else { userPaused = true; audio.pause(); setState(false); disarm(); }
     });
     audio.addEventListener("error", function () { btn.classList.add("is-error"); setState(false); });
-    // Pause politely when the tab is hidden
-    doc.addEventListener("visibilitychange", function () { if (doc.hidden && !audio.paused) { audio.pause(); setState(false); } });
+    // quiet while the tab is hidden; back on when the guest returns
+    doc.addEventListener("visibilitychange", function () {
+      if (doc.hidden && !audio.paused) { hiddenPaused = true; audio.pause(); setState(false); }
+      else if (!doc.hidden && hiddenPaused && !userPaused) { hiddenPaused = false; play(); }
+    });
   }
 
   /* ------------------------------------------------------------- boot */
