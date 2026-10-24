@@ -37,8 +37,7 @@
     if (x < 16.9) return .36;           // the light
     return .42;                         // the finale reveals
   }
-  var REVEAL = 2000;         // ms for the names, date and place to finish fading in (styles.css: .hero__content)
-  var AUTO_START = 1800;     // ms the opening then rests, fully shown, before the journey begins by itself
+  var GATE_AT = 1400;       // ms after the names begin to appear that "Open the invitation" is offered
   var HURRY = 2.8;           // a tap or swipe while the journey moves plays it this much faster, to the next stop
   var REPEAT_INTRO = 1;      // opening speed for a guest who has seen it before (1 = the same as the first time)
   var HOLD = 2.35;           // metres between camera and a card while you read it
@@ -71,7 +70,7 @@
   ];
 
   var doc = document, root = doc.documentElement;
-  var settled = 0, intro = false, introGo = false, resting = false, boost = 1, introBoost = 1, readyAt = 0;
+  var settled = 0, intro = false, introGo = false, resting = false, boost = 1, introBoost = 1, readyAt = 0, gate = true;
   var el = {}, cards = [], camAt, sm = 0, vel = 0, last = 0, dust = null, opts = {}, chapter = 0;
 
   /* ---------------------------------------------------------- helpers */
@@ -113,17 +112,29 @@
     chapter = i;
   }
   // the opening plays by itself: a scroll or tap during it only makes the
-  // "sit back" line glow, so guests see there is nothing to do yet
+  // "sit back" line glow, so guests see there is nothing to do yet (before
+  // the invitation is opened, the seal glows instead)
   function nudge() {
-    if (!el.intro) return;
-    el.intro.classList.remove("is-nudge"); void el.intro.offsetWidth; el.intro.classList.add("is-nudge");
+    var n = gate ? el.gate : el.intro;
+    if (!n) return;
+    n.classList.remove("is-nudge"); void n.offsetWidth; n.classList.add("is-nudge");
+  }
+  // "Open the invitation": the guest's tap starts the music (browsers allow
+  // sound only after a touch) and the journey
+  function openInvite() {
+    if (!gate || !readyAt) return;
+    gate = false; introGo = true;
+    if (el.gate) { el.gate.classList.add("is-open"); el.gate.blur(); }
+    doc.dispatchEvent(new CustomEvent("invite:open"));
   }
   // after the opening, input while the journey moves is never lost: it hurries the move along
   function hurry() {
+    if (gate) return openInvite();
     if (intro) return nudge();
     boost = HURRY;
   }
   function next() {
+    if (gate) return nudge();
     if (intro) return nudge();
     if (!resting && STOPS[chapter] > sm) return hurry();
     if (resting) { goTo(settled + 1); if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} }
@@ -141,6 +152,8 @@
     el.hint = doc.querySelector(".next-hint");
     el.back = doc.querySelector(".back-hint");
     el.intro = doc.querySelector(".intro-hint");
+    el.gate = doc.querySelector(".gate");
+    if (el.gate) el.gate.addEventListener("click", openInvite);
     if (el.hint) el.hint.addEventListener("click", next);
     if (el.back) el.back.addEventListener("click", back);
     // a single deliberate swipe (or wheel / arrow key) counts as one tap
@@ -149,6 +162,7 @@
     doc.addEventListener("click", function (e) {
       if (resting && !intro) return;
       if (e.target.closest && e.target.closest("a, button, input, textarea, select, label")) return;
+      if (gate) return openInvite();
       hurry();
     });
     window.addEventListener("touchstart", function (e) { var t = e.touches[0]; ty = t.clientY; tx = t.clientX; }, { passive: true });
@@ -175,6 +189,7 @@
       if (t.closest("input, textarea, select, [contenteditable]")) return;
       // Space on a button or link must press it (the guest stepper, "Send reply"), not move on
       if (e.key === " " && t.closest("button, a")) return;
+      if (gate && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); return openInvite(); }
       if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); next(); }
       if (e.key === "ArrowUp" || e.key === "PageUp") { e.preventDefault(); back(); }
     });
@@ -219,16 +234,15 @@
     dust = makeDust(doc.querySelector(".finale__dust"));
     window.scrollTo(0, 0);
     chapter = 0; sm = 0; settled = 0;
-    // the opening (photo → church → Save the Date → invitation) plays on its
-    // own once the names, date and place have fully appeared and rested. A tap,
-    // swipe or key on the photo starts it early; during it, the same hurries it.
+    // the opening: the names appear, then the wax seal ("Open the
+    // invitation"). Once opened, the photo → church → Save the Date →
+    // invitation plays on its own.
     intro = chapter === 0;
     try { if (localStorage.getItem("journey-seen")) introBoost = REPEAT_INTRO; } catch (e) {}
-    (function autostart() {
-      if (!intro || introGo) return;
+    (function offer() {
       if (!readyAt && root.classList.contains("is-ready")) readyAt = Date.now();
-      if (readyAt && Date.now() - readyAt >= (REVEAL + AUTO_START) / introBoost) { introGo = true; return; }
-      setTimeout(autostart, 100);
+      if (readyAt && Date.now() - readyAt >= GATE_AT) { if (el.gate) el.gate.classList.add("is-on"); return; }
+      setTimeout(offer, 100);
     })();
     requestAnimationFrame(frame);
   }
@@ -286,8 +300,8 @@
 
     // the opening's "sit back" line, with its progress: the photo's rest, then the walk in
     if (el.intro) {
-      el.intro.classList.toggle("is-on", intro);
-      var ip = !intro ? 1 : introGo ? .15 + .85 * clamp(sm / STOPS[1], 0, 1) : .15 * (readyAt ? clamp((Date.now() - readyAt) / (REVEAL + AUTO_START), 0, 1) : 0);
+      el.intro.classList.toggle("is-on", intro && introGo);
+      var ip = !intro ? 1 : clamp(sm / STOPS[1], 0, 1);
       setStyle(el.intro, "ih", "--p", ip.toFixed(3));
     }
     // a quiet "swipe up" cue whenever the journey rests and there is more

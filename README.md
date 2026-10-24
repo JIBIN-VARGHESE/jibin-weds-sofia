@@ -45,7 +45,7 @@ The page is one continuous scene, run by `assets/js/journey.js`. Scrolling doesn
 
 **Chapters.** The page doesn't scroll. Guests tap **Continue** (or swipe once) to move to the next chapter, and a small **Back** returns; the journey then plays on its own: the camera glides, turns to the next card, the card settles and its words reveal. The opening (photo → church → Save the Date → invitation) and the ending play by themselves; the opening waits until the names, date and place are fully shown. The opening plays by itself: a line at the bottom ("Sit back — your invitation unfolds on its own") says so, and glows if someone scrolls. After it, a tap or swipe while the journey moves hurries it to the next stop. Save the Date and the verse hang in the aisle; each rests a moment and the camera walks through it.
 
-**Changing the pacing.** At the top of `journey.js`: `STOPS` (where each chapter rests), `rate()` (how fast each stretch plays), `REVEAL` + `AUTO_START` (time on the opening photo: the names fading in, then resting), `HURRY` (how much faster a tap during a move plays), `REPEAT_INTRO` (opening speed for returning guests);
+**Changing the pacing.** At the top of `journey.js`: `STOPS` (where each chapter rests), `rate()` (how fast each stretch plays), `GATE_AT` (when the wax seal, "Open the invitation", appears under the names; the guest's tap on it starts the music and the journey), `HURRY` (how much faster a tap during a move plays), `REPEAT_INTRO` (opening speed for returning guests);
 - `TOTAL` is the length in screens of scrolling;
 - `STATIONS` says where each card stands (`z` along the aisle, `x` left/right) and when it arrives (`a`), holds until (`b`) and is passed (`s1`);
 - `CAM` lists the camera's position along the aisle at given scroll points.
@@ -86,7 +86,7 @@ Keep each JSON under about 300 KB, because big animations make phones stutter. G
 
 ## 3. Music
 
-Put an MP3 at `assets/music/wedding.mp3`. The music plays by itself and the button top right pauses it (once paused, it stays paused). Browsers don't let a page start sound before the visitor touches it (iPhones never do), so it starts at once where allowed and otherwise on the guest's first tap anywhere. Set `music.enabled: false` to turn it off. Only use music you have the right to share.
+Put an MP3 at `assets/music/wedding.mp3`. The opening ends with a gold wax seal, **Open the invitation**: the guest's tap on it starts the music (fading in) and the journey, so the music plays from the start for everyone (browsers only allow sound after a touch). The button top right pauses it; once paused, it stays paused. Set `music.enabled: false` to turn it off. Only use music you have the right to share.
 
 ## 4. Connecting RSVP (all free tiers)
 

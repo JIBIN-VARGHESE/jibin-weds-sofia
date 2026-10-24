@@ -149,7 +149,7 @@
   // P: what journey.js asks for each frame
   // dim: 0..1, how much words are on screen (the church steps back behind them)
   var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0, dim: 0 };
-  var SAT = .68, BRIGHT = .86, DIM = .3;   // the church's colour grade
+  var SAT = 1, BRIGHT = 1, DIM = .16;   // the church's colour grade
   var opts = {}, dirty = true, slowFrames = 0, host, lastDraw = 0, lastKey = "", acc = 0, accN = 0;
 
   /* ------------------------------------------------------------- setup */
@@ -638,7 +638,6 @@
         lights.push({ kind: "flame", p: [lx, ly + .02, zp], s: .07, c: [1, .9, .7], a: .9, ph: Math.random() * 9, candle: zp });
         lights.push({ kind: "glow", p: [lx, ly + .04, zp - .01], s: 1.3, c: [1, .62, .3], a: .22, ph: Math.random() * 9, candle: zp });
         lights.push({ kind: "pool", p: [lx * .8, 0, zp], s: 2.2, c: [1, .6, .3], a: .06, ph: Math.random() * 9, candle: zp });
-        points.push({ p: [lx * .85, ly + .1, zp], c: [1, .58, .28], i: .9, k: 1.1, candle: zp });
       });
     }
 
@@ -808,8 +807,8 @@
     ["marble", [1.05, 1.02, 1], "marble", 1, 1 / 2.4, .5, 60, 0, 0],
     ["niche", [1, 1, 1], "niche", 2, 1, .2, 20, .25, 0],
     ["frontal", [1, 1, 1], "frontal", 2, 1, .15, 16, .05, 0],
-    ["carpet", [.5, .47, .47], "carpet", 2, 1, .05, 6, 0, 0],
-    ["floor", [.95, .95, .95], "marble", 3, 1 / 2.4, .55, 80, 0, 0],
+    ["carpet", [.62, .57, .57], "carpet", 2, 1, .05, 6, 0, 0],
+    ["floor", [.95, .95, .95], "marble", 3, 1 / 2.4, .38, 50, 0, 0],
     ["vault", [1.04, 1, .95], "stone", 1, .5, .02, 8, 0, 0],
     ["stars", [1, 1, 1], "stars", 1, .45, .3, 20, .1, 0],
     ["glassC", [1, 1, 1], "glassC", 2, 1, 0, 1, .95, 0, "win"],
@@ -840,8 +839,9 @@
   var boundTex = null;
   function bind(t) { if (boundTex !== t) { gl.bindTexture(gl.TEXTURE_2D, t.t); boundTex = t; } }
   function flicker(l, t) {
-    if (l.still) return 1;
-    return 1 + .07 * Math.sin(t * 9.1 + l.ph) + .05 * Math.sin(t * 15.7 + l.ph * 2) + .04 * Math.sin(t * 27.3 + l.ph * 3);
+    if (l.still || l.kind === "pool" || l.kind === "beam") return 1;
+    var f = .045 * Math.sin(t * 2.1 + l.ph) + .025 * Math.sin(t * 3.4 + l.ph * 2);
+    return 1 + (l.kind === "flame" ? f : f * .35);
   }
   function litBy(l, reach) {
     if (l.candle != null) return Math.min(1, Math.max(0, (reach - l.candle) / 1.6));
@@ -863,20 +863,13 @@
     gl.useProgram(progB);
     gl.uniform3f(UB.Cam, 0, M.eye, cam); gl.uniform4fv(UB.Proj, proj); gl.uniform2f(UB.Yaw, yc, ys);
     gl.uniform3f(UB.Eye, 0, M.eye, cam);
-    // the eight lights that matter most from here: candles light down the aisle as the church wakes
-    var ahead = cam + 5, pick = [];
-    points.forEach(function (l) {
-      var lit = l.candle != null ? Math.min(1, Math.max(0, (reach - l.candle) / 1.6)) : win;
-      if (l.rose) lit = win * (1 + P.bloom * 3);
-      if (lit <= 0) return;
-      var dz = l.p[2] - ahead, dd = l.p[0] * l.p[0] + dz * dz;
-      pick.push({ l: l, w: l.i * lit * (l.still ? 1 : flicker({ ph: l.p[2] }, tsec)), s: l.i * lit / (1 + dd * l.k * .5) });
-    });
-    pick.sort(function (a, b) { return b.s - a.s; });
+    // the chandeliers, the altar, the sanctuary and the rose window: always the
+    // same lights, steady (no flicker on the stone), lit one by one as the church wakes
     for (var q = 0; q < 8; q++) {
-      var e = pick[q];
-      LP[q * 4] = e ? e.l.p[0] : 0; LP[q * 4 + 1] = e ? e.l.p[1] : 0; LP[q * 4 + 2] = e ? e.l.p[2] : 0; LP[q * 4 + 3] = e ? e.l.k : 1;
-      LC[q * 3] = e ? e.l.c[0] * e.w : 0; LC[q * 3 + 1] = e ? e.l.c[1] * e.w : 0; LC[q * 3 + 2] = e ? e.l.c[2] * e.w : 0;
+      var l0 = points[q], lit0 = 0;
+      if (l0) { lit0 = l0.candle != null ? Math.min(1, Math.max(0, (reach - l0.candle) / 1.6)) : win; if (l0.rose) lit0 = win * (1 + P.bloom * 3); }
+      LP[q * 4] = l0 ? l0.p[0] : 0; LP[q * 4 + 1] = l0 ? l0.p[1] : 0; LP[q * 4 + 2] = l0 ? l0.p[2] : 0; LP[q * 4 + 3] = l0 ? l0.k : 1;
+      LC[q * 3] = l0 ? l0.c[0] * l0.i * lit0 : 0; LC[q * 3 + 1] = l0 ? l0.c[1] * l0.i * lit0 : 0; LC[q * 3 + 2] = l0 ? l0.c[2] * l0.i * lit0 : 0;
     }
     gl.uniform4fv(UB.LP, LP); gl.uniform3fv(UB.LC, LC);
     var amb = .035 + .085 * win;
@@ -962,7 +955,7 @@
       var bx = -M.wallX + .55 * (COURSE + 1.6 - yy);
       var inBeam = Math.exp(-Math.pow((xx - bx) / .7, 2));
       moteData[i * 4] = xx; moteData[i * 4 + 1] = yy; moteData[i * 4 + 2] = zz;
-      moteData[i * 4 + 3] = (.22 + .9 * inBeam) * (.6 + .4 * Math.sin(tsec * 1.3 * m.sp + m.ph));
+      moteData[i * 4 + 3] = (.22 + .9 * inBeam) * (.75 + .25 * Math.sin(tsec * .6 * m.sp + m.ph));
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, moteBuf);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, moteData);
@@ -1023,7 +1016,7 @@
     // (devices without a usable graphics chip, test robots like PageSpeed):
     // 60 frames a second on the processor stutters badly, so those get the
     // still picture of the church instead, and the journey runs over it.
-    var ctxOpts = { alpha: false, antialias: (window.devicePixelRatio || 1) < 1.5, depth: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: "high-performance", failIfMajorPerformanceCaveat: true };
+    var ctxOpts = { alpha: false, antialias: true, depth: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: "high-performance", failIfMajorPerformanceCaveat: true };
     try { gl = canvas.getContext("webgl", ctxOpts) || canvas.getContext("experimental-webgl", ctxOpts); } catch (e) { gl = null; }
     if (!gl) { host.classList.add("nave--still"); return false; }
     // some software renderers don't report the caveat: recognise them by name

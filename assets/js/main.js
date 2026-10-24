@@ -363,7 +363,20 @@
       btn.setAttribute("aria-label", playing ? "Pause music" : "Play music");
       btn.querySelector(".music__label").textContent = playing ? "Pause" : "Play";
     }
+    // fade in (and out) rather than start abruptly; phones that fix the volume simply play
+    var target = M.volume != null ? M.volume : 0.5, fadeT = null;
+    function fade(to, ms, done) {
+      clearInterval(fadeT);
+      var from = audio.volume, t0 = Date.now();
+      fadeT = setInterval(function () {
+        var k = Math.min(1, (Date.now() - t0) / ms);
+        try { audio.volume = from + (to - from) * k * k * (3 - 2 * k); } catch (e) {}
+        if (k >= 1) { clearInterval(fadeT); if (done) done(); }
+      }, 40);
+    }
     function play() {
+      if (audio.paused) { try { audio.volume = 0; } catch (e) {} }
+      fade(target, 2600);
       var p = audio.play();
       if (p && p.then) return p.then(function () { setState(true); return true; }, function () { setState(false); return false; });
       setState(!audio.paused);
@@ -383,7 +396,7 @@
       btn.hidden = false;
       audio.src = M.src;
       audio.preload = "auto";
-      audio.volume = M.volume != null ? M.volume : 0.5;
+      audio.volume = target;
       setState(false);
       arm();
       play().then(function (ok) { if (ok) disarm(); });
@@ -397,9 +410,11 @@
 
     btn.addEventListener("click", function () {
       if (audio.paused) { userPaused = false; play(); }
-      else { userPaused = true; audio.pause(); setState(false); disarm(); }
+      else { userPaused = true; setState(false); disarm(); fade(0, 450, function () { audio.pause(); }); }
     });
     audio.addEventListener("error", function () { btn.classList.add("is-error"); setState(false); });
+    // opening the invitation (the wax seal) is the guest's first touch: the music begins with it
+    doc.addEventListener("invite:open", function () { if (!userPaused && audio.paused && audio.src) play().then(function (ok) { if (ok) disarm(); }); });
     // quiet while the tab is hidden; back on when the guest returns
     doc.addEventListener("visibilitychange", function () {
       if (doc.hidden && !audio.paused) { hiddenPaused = true; audio.pause(); setState(false); }
