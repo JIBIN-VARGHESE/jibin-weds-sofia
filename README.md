@@ -54,8 +54,9 @@ Keep the stations and the camera points in step.
 
 **Focus and the living camera.** Also at the top of `journey.js`:
 - `FOCUS`, `FOCUS_WORDS`: how soft the church goes behind a card and behind words in the aisle (0 = never, .4 a little, 1 soft). Like a camera pulling focus: it softens as a card arrives and sharpens as you walk on. Upright phones get a little less (`.8 ×`). A device already struggling at its lowest resolution skips it.
-- `LEAN`: how far the camera leans (metres) with the mouse on a computer, or with the tilt of the phone on Android. iPhones only give the tilt after a permission pop-up, so there the camera only floats. While a card is held the camera circles it, so the card stays still and the church swings gently behind it, and the card is seen a degree or two from that side.
-- `FLOAT`: how far the camera floats by itself, like a steady hand (metres).
+- `LEAN`: how far the camera leans (metres) with the mouse on a computer. While a card is held the camera circles it, so the card stays still and the church swings gently behind it, and the card is seen a degree or two from that side. (Not with a phone's tilt: held near upright, a phone's tilt reading jumps by many degrees and shook the church.)
+- `FLOAT`: how far the camera floats by itself, like a steady hand (metres). On phones this is the only camera movement at rest.
+- **Test switch:** add `?off=` to the address to turn effects off one by one and compare on a phone: `?off=focus`, `?off=float`, `?off=lean`, `?off=push` (the opening photo's slow push), several at once (`?off=float,push`) or `?off=all`. Without it, everything is on.
 
 
 **Reduce motion / no JavaScript:** the same scenes stack as a calm page over a still, lit church.

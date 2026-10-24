@@ -43,8 +43,15 @@
   var HOLD = 2.35;           // metres between camera and a card while you read it
   var CARD_Y = 1.5;          // card height above the floor (metres)
   var FOCUS = 1, FOCUS_WORDS = .4;   // how soft the church goes behind a card / behind words in the aisle (0 = never, .4 a little, 1 soft)
-  var LEAN = [.12, .07];     // how far the camera leans with the mouse or the phone's tilt (metres: sideways, up)
+  var LEAN = [.12, .07];     // how far the camera leans with the mouse (metres: sideways, up)
   var FLOAT = [.03, .018];   // how far it floats by itself (metres)
+  // test switch, to compare on a phone: ?off=focus,float,lean (or ?off=all)
+  // turns those effects off; ?off=push stops the opening photo's slow push (styles.css)
+  var OFF = (((location.search.match(/[?&]off=([^&#]*)/) || [])[1]) || "").split(",");
+  function off(name) { return OFF.indexOf(name) >= 0 || OFF.indexOf("all") >= 0; }
+  if (off("focus")) FOCUS = FOCUS_WORDS = 0;
+  if (off("float")) FLOAT = [0, 0];
+  if (off("lean")) LEAN = [0, 0];
 
   // where each card stands (z along the aisle, x left/right) and when (screens):
   // s0 approach starts, a = arrives and holds, b = hold ends, s1 = walked past
@@ -151,10 +158,10 @@
     if (settled > 1) goTo(settled - 1);
   }
 
-  // The camera leans a little with the guest: with the mouse on a computer,
-  // with the tilt of the phone where the browser gives it freely (Android;
-  // iPhones would ask permission with a pop-up, so there it only floats).
-  // Only movement counts: a phone held still at any angle drifts back to centre.
+  // The camera leans a little with the mouse on a computer. Not with the
+  // tilt of a phone: held near upright, a phone's side-to-side reading turns
+  // the sensor's tiny noise into jumps of many degrees, which shook the church.
+  // Phones (and computers) only float.
   function listenLean() {
     window.addEventListener("pointermove", function (e) {
       if (e.pointerType !== "mouse") return;
@@ -162,18 +169,6 @@
       lean.ty = clamp(e.clientY / Math.max(1, window.innerHeight) * 2 - 1, -1, 1);
     }, { passive: true });
     doc.addEventListener("mouseout", function (e) { if (!e.relatedTarget) lean.tx = lean.ty = 0; });
-    var rest = null;
-    window.addEventListener("deviceorientation", function (e) {
-      if (e.beta == null || e.gamma == null) return;
-      var a = (screen.orientation && screen.orientation.angle) || window.orientation || 0, x = e.gamma, y = e.beta;
-      if (a === 90) { x = e.beta; y = -e.gamma; } else if (a === -90 || a === 270) { x = -e.beta; y = e.gamma; } else if (a === 180) { x = -e.gamma; y = -e.beta; }
-      var t = performance.now();
-      // the first reading, after a pause, or a flip past upright: start again from here
-      if (!rest || t - rest.t > 1000 || Math.abs(x - rest.x) > 40 || Math.abs(y - rest.y) > 40) rest = { x: x, y: y, t: t };
-      var f = 1 - Math.exp(-(t - rest.t) / 2500);
-      rest.x += (x - rest.x) * f; rest.y += (y - rest.y) * f; rest.t = t;
-      lean.tx = clamp((x - rest.x) / 14, -1, 1); lean.ty = clamp((y - rest.y) / 14, -1, 1);
-    }, { passive: true });
   }
   // a critically damped spring step (stable for any frame time): eases
   // lean[k] toward its target, carrying its speed lean[v]
