@@ -439,6 +439,8 @@
 
   // test mode: cards drawn from pictures (?gold=photo), see styles.css
   if (/[?&]gold=photo\b/.test(location.search)) root.classList.add("ink-photo");
+  // test switch: ?off=push (or ?off=all) stops the opening photo's slow push (see journey.js for the rest)
+  if (/[?&]off=[^&#]*\b(push|all)\b/.test(location.search)) root.classList.add("no-push");
 
   bindContent();
   renderLists();
