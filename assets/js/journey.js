@@ -34,6 +34,7 @@
     if (x > 5.6 && x < 6.25) return .3;    // the verse appears and its words light up
     if (x > 6.25 && x < 6.75) return .25;  // ...it rests (~2 s), then you walk through it
     if (x < 15.6) return .46;           // walking between the cards (an unhurried glide)
+    if (x > 16.0 && x < 16.5) return .1;   // "Your presence and prayers…" rests (~4 s to read) while the light swells
     if (x < 16.9) return .36;           // the light
     return .42;                         // the finale reveals
   }
@@ -45,13 +46,14 @@
   var FOCUS = 1, FOCUS_WORDS = .4;   // how soft the church goes behind a card / behind words in the aisle (0 = never, .4 a little, 1 soft)
   var LEAN = [.12, .07];     // how far the camera leans with the mouse (metres: sideways, up)
   var FLOAT = [.03, .018];   // how far it floats by itself (metres)
-  // test switch, to compare on a phone: ?off=focus,float,lean (or ?off=all)
-  // turns those effects off; ?off=push stops the opening photo's slow push (styles.css)
+  var PUSH = [.055, 18];     // the opening photo drifts this much closer (5.5%) over this many seconds while the names are read
+  // test switch, to compare on a phone: ?off=focus,float,lean,push (or ?off=all)
   var OFF = (((location.search.match(/[?&]off=([^&#]*)/) || [])[1]) || "").split(",");
   function off(name) { return OFF.indexOf(name) >= 0 || OFF.indexOf("all") >= 0; }
   if (off("focus")) FOCUS = FOCUS_WORDS = 0;
   if (off("float")) FLOAT = [0, 0];
   if (off("lean")) LEAN = [0, 0];
+  if (off("push")) PUSH = [0, 18];
 
   // where each card stands (z along the aisle, x left/right) and when (screens):
   // s0 approach starts, a = arrives and holds, b = hold ends, s1 = walked past
@@ -81,7 +83,7 @@
 
   var doc = document, root = doc.documentElement;
   var settled = 0, intro = false, introGo = false, resting = false, boost = 1, introBoost = 1, readyAt = 0, gate = true;
-  var el = {}, cards = [], camAt, sm = 0, vel = 0, last = 0, dust = null, opts = {}, chapter = 0, leanNow = null;
+  var el = {}, cards = [], camAt, sm = 0, vel = 0, last = 0, dust = null, opts = {}, chapter = 0, leanNow = null, pushAt = 0;
   // the guest's lean: target (tx, ty) and eased value (x, y), each -1..1
   var lean = { tx: 0, ty: 0, x: 0, y: 0, vx: 0, vy: 0 };
 
@@ -336,7 +338,12 @@
     setStyle(el.hero, "h", "opacity", (1 - heroOut).toFixed(3));
     setStyle(el.hero, "h", "visibility", heroOut >= 1 ? "hidden" : "visible");
     if (heroOut < 1) {
-      setStyle(el.heroImg, "hi", "transform", "scale(" + (1 + .07 * clamp(s, 0, 1.1)).toFixed(4) + ")");
+      // from the moment the curtain lifts, the photo drifts slowly closer
+      // (easing out), and zooms on as it fades: one transform, on one layer
+      if (!pushAt && root.classList.contains("is-ready")) pushAt = now;
+      var pu = pushAt ? clamp((now - pushAt) / 1000 / PUSH[1], 0, 1) : 0;
+      var push = 1 + PUSH[0] * (1 - Math.pow(1 - pu, 3.3));
+      setStyle(el.heroImg, "hi", "transform", "scale(" + (push * (1 + .07 * clamp(s, 0, 1.1))).toFixed(4) + ")");
       setStyle(el.heroText, "ht", "transform", "translate3d(0," + (-60 * ss(0, .8, s)).toFixed(1) + "px,0)");
       setStyle(el.heroText, "ht", "opacity", (1 - ss(.05, .55, s)).toFixed(3));
       if (el.cue) setStyle(el.cue, "cu", "opacity", (1 - ss(0, .12, s)).toFixed(3));
@@ -369,7 +376,7 @@
     });
     var lightUp = ss(1.0, 2.4, s);
     var bloom = ss(15.6, 16.7, s) + .18 * bump(5.7, 6.3, 6.9, 7.5, s);   // the rose window: brighter for the verse, then floods
-    var finaleOn = s > 16.6;
+    var finaleOn = s > 16.72;   // the photo takes over only under the full flood of light (no glimpse of it before)
     var saveC = bump(2.45, 2.95, 3.2, 3.6, s), verseC = bump(5.6, 6.0, 6.75, 7.1, s);   // Save the Date / the verse resting in the centre
     leanNow = leanStep(now, dt);
     if (window.Nave) {
@@ -411,7 +418,7 @@
     var pr = bump(15.75, 16.05, 16.45, 16.75, s);
     setStyle(el.presence, "pr", "opacity", pr.toFixed(3));
     setStyle(el.presence, "pr", "visibility", pr > 0 ? "visible" : "hidden");
-    var fl = ss(16.15, 16.75, s) * (1 - ss(16.8, 17.5, s));
+    var fl = ss(16.3, 16.75, s) * (1 - ss(16.8, 17.5, s));   // the flood rises as the last words leave, not while they are read
     if (fl > 0 && !el.flashDrawn) paintFlash();
     setStyle(el.flash, "fl", "opacity", fl.toFixed(3));
 
