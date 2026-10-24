@@ -119,9 +119,9 @@ window.WEDDING = {
   // assets/js/nave.js (no pictures to download). Devices without a graphics
   // chip see a still picture of it: assets/images/nave/still-*.webp.
   art: {
-    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024k",   // opening picture on phones
-    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024k",  // opening picture on wide screens
-    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024k", // the couple at the end; fades in over the church
+    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024l",   // opening picture on phones
+    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024l",  // opening picture on wide screens
+    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024l", // the couple at the end; fades in over the church
     // The opening picture is the top of the couple's collage, fading into the
     // dark where the names sit (the bottom panels are left out). Both photos
     // must be ones you own or have permission to use.

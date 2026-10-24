@@ -34,6 +34,7 @@
     if (x > 5.6 && x < 6.25) return .3;    // the verse appears and its words light up
     if (x > 6.25 && x < 6.75) return .25;  // ...it rests (~2 s), then you walk through it
     if (x < 15.6) return .46;           // walking between the cards (an unhurried glide)
+    if (x > 16.0 && x < 16.5) return .1;   // "Your presence and prayers…" rests (~4 s to read) while the light swells
     if (x < 16.9) return .36;           // the light
     return .42;                         // the finale reveals
   }
@@ -369,7 +370,7 @@
     });
     var lightUp = ss(1.0, 2.4, s);
     var bloom = ss(15.6, 16.7, s) + .18 * bump(5.7, 6.3, 6.9, 7.5, s);   // the rose window: brighter for the verse, then floods
-    var finaleOn = s > 16.6;
+    var finaleOn = s > 16.72;   // the photo takes over only under the full flood of light (no glimpse of it before)
     var saveC = bump(2.45, 2.95, 3.2, 3.6, s), verseC = bump(5.6, 6.0, 6.75, 7.1, s);   // Save the Date / the verse resting in the centre
     leanNow = leanStep(now, dt);
     if (window.Nave) {
@@ -411,7 +412,7 @@
     var pr = bump(15.75, 16.05, 16.45, 16.75, s);
     setStyle(el.presence, "pr", "opacity", pr.toFixed(3));
     setStyle(el.presence, "pr", "visibility", pr > 0 ? "visible" : "hidden");
-    var fl = ss(16.15, 16.75, s) * (1 - ss(16.8, 17.5, s));
+    var fl = ss(16.3, 16.75, s) * (1 - ss(16.8, 17.5, s));   // the flood rises as the last words leave, not while they are read
     if (fl > 0 && !el.flashDrawn) paintFlash();
     setStyle(el.flash, "fl", "opacity", fl.toFixed(3));
 
