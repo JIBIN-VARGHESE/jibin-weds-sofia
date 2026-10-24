@@ -319,6 +319,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
   color: var(--fg);
   /* candle-light sheen across the top, a faint paper grain, then the gold */
   background:
+    linear-gradient(105deg, rgba(255, 246, 224, 0) 42%, rgba(255, 246, 224, .5) 50%, rgba(255, 246, 224, 0) 58%) 100% 0 / 300% 100% no-repeat,
     radial-gradient(120% 55% at 50% 0%, rgba(255, 241, 214, .34), rgba(255, 241, 214, 0) 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .29 0 0 0 0 .18 0 0 0 0 .03 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     linear-gradient(180deg, #E0C69A 0%, #CDAE80 55%, #BC9A6A 100%);
@@ -348,6 +349,15 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .card__text { max-width: 19.5rem; font-style: italic; font-size: 1.08rem; line-height: 1.42; color: var(--fg-soft); }
 .card__meta, .card__foot { font-family: var(--sans); font-weight: 500; font-size: .7rem; letter-spacing: var(--track); text-transform: uppercase; color: var(--accent); }
 .card__meta.tba { font-style: normal; }
+/* as a card settles, light passes over the gold once, like foil catching a candle */
+.journey .card.is-held { animation: foil 1.9s .35s var(--ease) both; }
+@keyframes foil {
+  from { background-position: 100% 0, 0 0, 0 0, 0 0; }
+  to   { background-position: 0% 0, 0 0, 0 0, 0 0; }
+}
+.card__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin-top: .45rem; }
+.card .card__actions .btn { margin-top: 0; padding-left: 1.2rem; padding-right: 1.2rem; }
+.card__actions .btn::after { display: none; }
 .card__foot { position: relative; margin-top: .5rem; padding-top: .95rem; border-top: 1px solid transparent; border-image: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent) 1; color: var(--fg-soft); }
 /* a small diamond at the centre of the rule above the footer line */
 .card__foot::before { content: ""; position: absolute; left: 50%; top: -4px; width: 7px; height: 7px; margin-left: -3.5px; transform: rotate(45deg); background: #8A6022; -webkit-text-fill-color: initial; }
@@ -417,12 +427,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261024") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261024b") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024b"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024b"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024b"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024b"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024b"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
@@ -464,6 +474,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .finale__ref { margin-top: -.3rem; font-family: var(--sans); font-weight: 500; font-size: .72rem; letter-spacing: var(--track); text-transform: uppercase; color: var(--gold); }
 /* the last candle: a placeholder; the flame is drawn on the dust canvas */
 .finale__candle { display: block; width: 60px; height: 64px; margin-top: -.2rem; }
+.finale__share { min-height: 44px; margin-top: -.3rem; padding: .6rem 1.3rem; border-color: rgba(217, 174, 98, .55); background: rgba(14, 10, 7, .35); text-shadow: none; }
 
 /* ================================================== JOURNEY MODE (JS on)
    Everything is fixed; journey.js places and fades each scene. */

@@ -283,6 +283,69 @@
     }).observe(section);
   }
 
+  /* ------------------------------------------- 5. calendar and sharing */
+  // "Calendar" on the Wedding and Reception cards: iPhones, iPads and Macs
+  // open an .ics file straight into Calendar; everyone else gets Google Calendar.
+  function initCalendar() {
+    var couple = C.couple || {};
+    var who = (couple.bride || "") + " & " + (couple.groom || "");
+    var events = {
+      ceremony: { title: who + " · Holy Matrimony", time: W.ceremonyTime, hours: 2, place: [W.churchName, W.churchAddress || W.town, W.region].filter(Boolean).join(", "), link: W.churchMapsUrl },
+      reception: { title: who + " · Reception", time: W.receptionTime, hours: 3, place: [W.receptionVenue, W.receptionAddress || W.town, W.region].filter(Boolean).join(", "), link: W.receptionMapsUrl || W.churchMapsUrl },
+    };
+    function stamp(ms) { return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }   // UTC, 20270425T090000Z
+    function ics(ev, start, end) {
+      var esc = function (t) { return String(t || "").replace(/([,;\\])/g, "\\$1"); };
+      return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Sofia and Jibin//Wedding//EN", "BEGIN:VEVENT",
+        "UID:" + start + "-" + ev.time + "@jibin-weds-sofia", "DTSTAMP:" + stamp(Date.now()),
+        "DTSTART:" + stamp(start), "DTEND:" + stamp(end), "SUMMARY:" + esc(ev.title), "LOCATION:" + esc(ev.place),
+        "DESCRIPTION:" + esc((ev.link || "") + " " + location.href.split("#")[0]),
+        "BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY", "DESCRIPTION:" + esc(ev.title), "END:VALARM",
+        "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+    }
+    var apple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+    doc.querySelectorAll("[data-cal]").forEach(function (btn) {
+      var ev = events[btn.getAttribute("data-cal")];
+      if (!ev || !ev.time || !W.date) { btn.remove(); return; }    // nothing to save until the time is set
+      btn.addEventListener("click", function () {
+        var start = new Date(W.date + "T" + ev.time + ":00+05:30").getTime(), end = start + ev.hours * 3600e3;
+        if (apple && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+          // iOS shows its own "Add to Calendar" sheet for a calendar link
+          location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics(ev, start, end));
+        } else if (apple) {
+          var a = el("a");
+          a.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics(ev, start, end));
+          a.download = btn.getAttribute("data-cal") + ".ics";
+          doc.body.appendChild(a); a.click(); a.remove();
+        } else {
+          window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(ev.title) +
+            "&dates=" + stamp(start) + "/" + stamp(end) + "&location=" + encodeURIComponent(ev.place) +
+            "&details=" + encodeURIComponent(location.href.split("#")[0]), "_blank", "noopener");
+        }
+      });
+    });
+  }
+
+  // "Share the invitation" at the very end: the phone's own share sheet,
+  // or the link copied where there is none
+  function initShare() {
+    var btn = doc.querySelector(".finale__share");
+    if (!btn || !(navigator.share || (navigator.clipboard && window.isSecureContext))) return;
+    btn.hidden = false;
+    var label = btn.querySelector("span"), text = label.textContent;
+    btn.addEventListener("click", function () {
+      var url = location.href.split("#")[0].split("?")[0];
+      if (navigator.share) {
+        navigator.share({ title: doc.title, text: "You're invited to the wedding of " + doc.title, url: url }).catch(function () {});
+      } else {
+        navigator.clipboard.writeText(url).then(function () {
+          label.textContent = "Link copied";
+          setTimeout(function () { label.textContent = text; }, 2200);
+        });
+      }
+    });
+  }
+
   /* -------------------------------------------------------- 6. music */
   function initMusic() {
     var M = C.music || {};
@@ -345,6 +408,8 @@
     setTimeout(function () {
       initLottie();
       initCountdown();
+      initCalendar();
+      initShare();
       initMusic();
       if (window.RSVP) window.RSVP.init(doc.querySelector(".rsvp__form"), C.rsvp || {});
     }, 0);
