@@ -119,8 +119,8 @@ window.WEDDING = {
   // assets/js/nave.js from these textures (all in assets/images/nave/).
   // Replace a file to change a surface; keep the pixel size (powers of two).
   art: {
-    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024b",   // opening picture on phones
-    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024b",  // opening picture on wide screens
+    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024c",   // opening picture on phones
+    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024c",  // opening picture on wide screens
     floor:  "assets/images/nave/floor.webp",    // polished stone tiles (repeats)
     carpet: "assets/images/nave/carpet.webp",   // aisle runner (repeats)
     wall:   "assets/images/nave/wall.webp",     // nave wall: arcade, triforium, clerestory (one bay, repeats)
@@ -130,7 +130,7 @@ window.WEDDING = {
     pew:    "assets/images/nave/pew.webp",      // pew back
     pewend: "assets/images/nave/pewend.webp",   // carved pew end
     altar:  "assets/images/nave/altar.webp",    // far wall: rose window, altar, candles
-    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024b", // the couple at the end; fades in over the church
+    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024c", // the couple at the end; fades in over the church
     // The opening picture is the top of the couple's collage, fading into the
     // dark where the names sit (the bottom panels are left out). Both photos
     // must be ones you own or have permission to use.
@@ -150,7 +150,7 @@ window.WEDDING = {
 
   /* ------------------------------------------------------------------ MUSIC */
   music: {
-    enabled: false,                // true once assets/music/wedding.mp3 exists (shows the music button)
+    enabled: true,                 // shows the music button (assets/music/wedding.mp3 must exist)
     src: "assets/music/wedding.mp3",
     volume: 0.5,
   },
