@@ -34,15 +34,15 @@
   <link rel="preload" href="assets/fonts/jost-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
   <!-- ?v=… makes every browser fetch fresh files after an update (phones can keep
        old copies for days). Change the number on every update, here and in config.js. -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261024i">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261024j">
 
   <!-- the journey layout from the very first paint (main.js falls back to the still page if it can't run) -->
   <script>(function (r) { r.classList.replace('no-js', 'js'); if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) r.classList.add('journey'); })(document.documentElement);</script>
-  <script src="config.js?v=20261024i" defer></script>
-  <script src="assets/js/rsvp.js?v=20261024i" defer></script>
-  <script src="assets/js/nave.js?v=20261024i" defer></script>
-  <script src="assets/js/journey.js?v=20261024i" defer></script>
-  <script src="assets/js/main.js?v=20261024i" defer></script>
+  <script src="config.js?v=20261024j" defer></script>
+  <script src="assets/js/rsvp.js?v=20261024j" defer></script>
+  <script src="assets/js/nave.js?v=20261024j" defer></script>
+  <script src="assets/js/journey.js?v=20261024j" defer></script>
+  <script src="assets/js/main.js?v=20261024j" defer></script>
 </head>
 <body>
 
@@ -123,8 +123,8 @@
   <div class="hero__film layer" aria-hidden="true">
     <picture>
       <!-- small landscape screens (a phone on its side); desktops use the portrait photo in a left-hand panel -->
-      <source media="(min-aspect-ratio: 1/1) and (max-width: 899px), (min-aspect-ratio: 1/1) and (max-height: 559px)" srcset="assets/images/hero/hero-landscape.webp?v=20261024i" data-art-srcset="heroLandscape">
-      <img class="hero__photo" src="assets/images/hero/hero-portrait.webp?v=20261024i" srcset="assets/images/hero/hero-portrait-720.webp?v=20261024i 720w, assets/images/hero/hero-portrait-1080.webp?v=20261024i 1080w, assets/images/hero/hero-portrait.webp?v=20261024i 1290w" sizes="(min-aspect-ratio: 1/1) and (min-width: 900px) and (min-height: 560px) 55vw, 100vw" data-art="heroPortrait" alt="" fetchpriority="high">
+      <source media="(min-aspect-ratio: 1/1) and (max-width: 899px), (min-aspect-ratio: 1/1) and (max-height: 559px)" srcset="assets/images/hero/hero-landscape.webp?v=20261024j" data-art-srcset="heroLandscape">
+      <img class="hero__photo" src="assets/images/hero/hero-portrait.webp?v=20261024j" srcset="assets/images/hero/hero-portrait-720.webp?v=20261024j 720w, assets/images/hero/hero-portrait-1080.webp?v=20261024j 1080w, assets/images/hero/hero-portrait.webp?v=20261024j 1290w" sizes="(min-aspect-ratio: 1/1) and (min-width: 900px) and (min-height: 560px) 55vw, 100vw" data-art="heroPortrait" alt="" fetchpriority="high">
     </picture>
   </div>
   <div class="hero__shade layer" aria-hidden="true"></div>
@@ -333,7 +333,9 @@
 <div class="scroller" aria-hidden="true"></div>
 <!-- the wax seal: the guest's tap opens the invitation and starts the music -->
 <button class="gate" type="button" aria-label="Open the invitation">
-  <span class="gate__hop" aria-hidden="true"><span class="gate__seal"><span class="gate__ring"></span><span class="gate__mark"><span data-bind="monogram.0">S</span><i>&amp;</i><span data-bind="monogram.1">J</span></span></span></span>
+  <span class="gate__hop" aria-hidden="true"><span class="gate__seal"><span class="gate__ring"></span><span class="gate__mark"><span data-bind="monogram.0">S</span><i>&amp;</i><span data-bind="monogram.1">J</span></span></span>
+    <!-- the seal again, in two halves along a crack: shown only as it breaks -->
+    <span class="gate__shards"><span class="gate__shard gate__shard--l"><span class="gate__seal"><span class="gate__ring"></span><span class="gate__mark"><span data-bind="monogram.0">S</span><i>&amp;</i><span data-bind="monogram.1">J</span></span></span></span><span class="gate__shard gate__shard--r"><span class="gate__seal"><span class="gate__ring"></span><span class="gate__mark"><span data-bind="monogram.0">S</span><i>&amp;</i><span data-bind="monogram.1">J</span></span></span></span></span></span>
   <span class="gate__label">Open the invitation</span>
 </button>
 <p class="intro-hint" role="status"><span>Sit back — your invitation unfolds on its own</span><i aria-hidden="true"><b></b></i></p>

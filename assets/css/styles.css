@@ -174,8 +174,8 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .nave > * { position: absolute; }
 .nave__gl { inset: 0; width: 100%; height: 100%; display: block; }
 .nave--still { background: #060403; }
-.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261024i") 50% 40% / cover no-repeat; }
-@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261024i"); } }
+.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261024j") 50% 40% / cover no-repeat; }
+@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261024j"); } }
 .nave__vignette { inset: 0; z-index: 5; background: radial-gradient(130% 95% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
 
 /* ======================================================= HERO (film) */
@@ -188,10 +188,14 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .layer { position: absolute; will-change: transform; }
 .hero__film picture { display: block; width: 100%; height: 100%; }
 .hero__film { inset: 0; }
-.hero__photo { display: block; }
-.hero__photo { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; transform: scale(1.06); transition: transform 10s cubic-bezier(.2, .6, .2, 1); }
-.is-ready .hero__photo { display: block; }
-.hero__photo { transform: scale(1); }
+.hero__photo { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; transform-origin: 50% 30%; transition: opacity 1.4s var(--ease); }
+/* as the curtain lifts the camera is already moving: a slow push towards
+   the two of them while the names are read (on the compositor, so it stays
+   smooth while the church is being built) */
+.is-ready .hero__photo { animation: hero-push 18s cubic-bezier(.2, .55, .3, 1) both; }
+@keyframes hero-push { from { transform: scale(1); } to { transform: scale(1.055); } }
+/* a photograph that arrives after the curtain fades in, never pops in half drawn */
+.hero__photo.is-loading, .finale__photo img.is-loading { opacity: 0; }
 .hero__shade {
   inset: 0; z-index: 1;
   background: linear-gradient(180deg, rgba(14, 10, 7, .3) 0%, rgba(14, 10, 7, 0) 16%, rgba(14, 10, 7, 0) 38%, rgba(14, 10, 7, .55) 52%, rgba(14, 10, 7, .85) 64%, var(--sanctuary) 82%);
@@ -427,12 +431,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261024i") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024i"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024i"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024i"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024i"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024i"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261024j") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024j"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024j"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024j"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024j"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024j"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
@@ -467,7 +471,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .flash { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; opacity: 0; }
 .scene--finale { min-height: 100svh; overflow: hidden; background: #0a0705; color: #FFF8EA; }
 .finale__photo { position: absolute; inset: 0; overflow: hidden; }
-.finale__photo img { width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 57% 42%; transform-origin: 57% 47%; }
+.finale__photo img { width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 57% 42%; transform-origin: 57% 47%; transition: opacity 1.4s var(--ease); }
 .finale__dust { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .finale__text {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
@@ -563,9 +567,26 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .gate__mark i { font-family: var(--script); font-style: normal; font-size: 1.3em; margin: 0 .1em; line-height: 1; }
 .gate__label { white-space: nowrap; font-family: var(--sans); font-weight: 500; font-size: .74rem; letter-spacing: .3em; margin-right: -.3em; text-transform: uppercase; color: #FFF3DE;
   text-shadow: 0 1px 12px rgba(0, 0, 0, .95); }
-.gate:hover .gate__seal, .gate:focus-visible .gate__seal { transform: scale(1.06); }
-.gate.is-open .gate__seal { transform: scale(.86); animation: seal-flash .9s var(--ease) both; }
-.gate.is-nudge .gate__seal { animation: seal-nudge .9s var(--ease); }
+.gate:hover .gate__hop > .gate__seal, .gate:focus-visible .gate__hop > .gate__seal { transform: scale(1.06); }
+.gate.is-nudge .gate__hop > .gate__seal { animation: seal-nudge .9s var(--ease); }
+/* breaking the seal: it presses in, then cracks in two and the halves fall
+   apart. The halves are a copy of the seal cut along a crack, shown only as
+   it breaks (so no seam shows while it is whole); the cut reaches past the
+   seal's edge so its shadow stays whole. */
+.gate__hop { position: relative; }
+.gate__shards { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.gate__shard { position: absolute; inset: 0; }
+.gate__shard .gate__seal, .gate__shard .gate__ring { animation: none; }
+.gate__shard--l { transform-origin: 28% 82%; -webkit-clip-path: polygon(-60% -60%, 53% -60%, 53% 0%, 50% 9%, 54% 19%, 49% 31%, 52% 42%, 47% 55%, 51% 66%, 48% 78%, 52% 89%, 49% 100%, 49% 160%, -60% 160%); clip-path: polygon(-60% -60%, 53% -60%, 53% 0%, 50% 9%, 54% 19%, 49% 31%, 52% 42%, 47% 55%, 51% 66%, 48% 78%, 52% 89%, 49% 100%, 49% 160%, -60% 160%); }
+.gate__shard--r { transform-origin: 72% 82%; -webkit-clip-path: polygon(53% -60%, 160% -60%, 160% 160%, 49% 160%, 49% 100%, 52% 89%, 48% 78%, 51% 66%, 47% 55%, 52% 42%, 49% 31%, 54% 19%, 50% 9%, 53% 0%); clip-path: polygon(53% -60%, 160% -60%, 160% 160%, 49% 160%, 49% 100%, 52% 89%, 48% 78%, 51% 66%, 47% 55%, 52% 42%, 49% 31%, 54% 19%, 50% 9%, 53% 0%); }
+.gate.is-open .gate__hop > .gate__seal { transform: scale(.92); animation: seal-gone 0s linear .15s forwards; }
+.gate.is-open .gate__shards { opacity: 1; transform: scale(.92); transition: opacity 0s linear .15s; }
+.gate.is-open .gate__shard .gate__seal { animation: seal-flash .8s var(--ease) .1s both; }
+.gate.is-open .gate__shard--l { animation: shard-l 1.1s cubic-bezier(.3, .5, .25, 1) .15s both; }
+.gate.is-open .gate__shard--r { animation: shard-r 1.1s cubic-bezier(.3, .5, .25, 1) .15s both; }
+@keyframes seal-gone { to { visibility: hidden; } }
+@keyframes shard-l { 0% { transform: none; } 14% { transform: translate(-2px, 0) rotate(-3deg); } 100% { transform: translate(-15px, 20px) rotate(-17deg); } }
+@keyframes shard-r { 0% { transform: none; } 14% { transform: translate(2px, 1px) rotate(2deg); } 100% { transform: translate(13px, 24px) rotate(13deg); } }
 @keyframes seal-breathe { 0%, 100% { box-shadow: 0 10px 28px rgba(0, 0, 0, .55), inset 0 2px 3px rgba(255, 240, 200, .7), inset 0 -4px 8px rgba(70, 40, 8, .55), 0 0 0 1px rgba(255, 226, 160, .35), 0 0 0 0 rgba(240, 184, 102, 0); }
   50% { box-shadow: 0 10px 28px rgba(0, 0, 0, .55), inset 0 2px 3px rgba(255, 240, 200, .7), inset 0 -4px 8px rgba(70, 40, 8, .55), 0 0 0 1px rgba(255, 226, 160, .35), 0 0 34px 6px rgba(240, 184, 102, .45); } }
 @keyframes seal-turn { to { transform: rotate(360deg); } }
@@ -605,6 +626,10 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 
 /* ======================================== STILL MODE (reduce motion / no JS)
    The same scenes, stacked as a calm page over the church. */
+/* (the light rays above the photo reach past the screen's sides; without
+   this, phones widen the page to fit them and show it slightly zoomed out) */
+html:not(.journey) { overflow-x: hidden; }
+@supports (overflow: clip) { html:not(.journey) { overflow-x: clip; } }
 html:not(.journey) .scenes { padding: 30svh 0 0; }
 html:not(.journey) .scene { margin: 0 auto 30svh; }
 html:not(.journey) .scene--wake, html:not(.journey) .scene--save, html:not(.journey) .scene--verse, html:not(.journey) .scene--line { display: grid; place-items: center; text-align: center; padding: 0 var(--gutter); }

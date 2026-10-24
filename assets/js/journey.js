@@ -42,6 +42,9 @@
   var REPEAT_INTRO = 1;      // opening speed for a guest who has seen it before (1 = the same as the first time)
   var HOLD = 2.35;           // metres between camera and a card while you read it
   var CARD_Y = 1.5;          // card height above the floor (metres)
+  var FOCUS = 1, FOCUS_WORDS = .4;   // how soft the church goes behind a card / behind words in the aisle (0 = never, .4 a little, 1 soft)
+  var LEAN = [.12, .07];     // how far the camera leans with the mouse or the phone's tilt (metres: sideways, up)
+  var FLOAT = [.03, .018];   // how far it floats by itself (metres)
 
   // where each card stands (z along the aisle, x left/right) and when (screens):
   // s0 approach starts, a = arrives and holds, b = hold ends, s1 = walked past
@@ -71,7 +74,9 @@
 
   var doc = document, root = doc.documentElement;
   var settled = 0, intro = false, introGo = false, resting = false, boost = 1, introBoost = 1, readyAt = 0, gate = true;
-  var el = {}, cards = [], camAt, sm = 0, vel = 0, last = 0, dust = null, opts = {}, chapter = 0;
+  var el = {}, cards = [], camAt, sm = 0, vel = 0, last = 0, dust = null, opts = {}, chapter = 0, leanNow = null;
+  // the guest's lean: target (tx, ty) and eased value (x, y), each -1..1
+  var lean = { tx: 0, ty: 0, x: 0, y: 0, vx: 0, vy: 0 };
 
   /* ---------------------------------------------------------- helpers */
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -146,6 +151,50 @@
     if (settled > 1) goTo(settled - 1);
   }
 
+  // The camera leans a little with the guest: with the mouse on a computer,
+  // with the tilt of the phone where the browser gives it freely (Android;
+  // iPhones would ask permission with a pop-up, so there it only floats).
+  // Only movement counts: a phone held still at any angle drifts back to centre.
+  function listenLean() {
+    window.addEventListener("pointermove", function (e) {
+      if (e.pointerType !== "mouse") return;
+      lean.tx = clamp(e.clientX / Math.max(1, window.innerWidth) * 2 - 1, -1, 1);
+      lean.ty = clamp(e.clientY / Math.max(1, window.innerHeight) * 2 - 1, -1, 1);
+    }, { passive: true });
+    doc.addEventListener("mouseout", function (e) { if (!e.relatedTarget) lean.tx = lean.ty = 0; });
+    var rest = null;
+    window.addEventListener("deviceorientation", function (e) {
+      if (e.beta == null || e.gamma == null) return;
+      var a = (screen.orientation && screen.orientation.angle) || window.orientation || 0, x = e.gamma, y = e.beta;
+      if (a === 90) { x = e.beta; y = -e.gamma; } else if (a === -90 || a === 270) { x = -e.beta; y = e.gamma; } else if (a === 180) { x = -e.gamma; y = -e.beta; }
+      var t = performance.now();
+      // the first reading, after a pause, or a flip past upright: start again from here
+      if (!rest || t - rest.t > 1000 || Math.abs(x - rest.x) > 40 || Math.abs(y - rest.y) > 40) rest = { x: x, y: y, t: t };
+      var f = 1 - Math.exp(-(t - rest.t) / 2500);
+      rest.x += (x - rest.x) * f; rest.y += (y - rest.y) * f; rest.t = t;
+      lean.tx = clamp((x - rest.x) / 14, -1, 1); lean.ty = clamp((y - rest.y) / 14, -1, 1);
+    }, { passive: true });
+  }
+  // a critically damped spring step (stable for any frame time): eases
+  // lean[k] toward its target, carrying its speed lean[v]
+  function damp(k, v, target, w, dt) {
+    var x = w * dt, e = 1 / (1 + x + .48 * x * x + .235 * x * x * x);
+    var change = lean[k] - target, t = (lean[v] + w * change) * dt;
+    lean[v] = (lean[v] - w * t) * e;
+    lean[k] = target + (change + t) * e;
+  }
+  // this frame's lean in metres (with the camera's own slow float), eased like a steady hand
+  function leanStep(now, dt) {
+    damp("x", "vx", lean.tx, 5.5, dt);
+    damp("y", "vy", lean.ty, 5.5, dt);
+    var t = now / 1000;
+    return {
+      hx: lean.x * LEAN[0], hy: -lean.y * LEAN[1],     // the guest's part
+      fx: FLOAT[0] * (.66 * Math.sin(t * .57) + .34 * Math.sin(t * .93 + 1.3)),
+      fy: FLOAT[1] * (.66 * Math.sin(t * .71 + 2.1) + .34 * Math.sin(t * 1.17)),
+    };
+  }
+
   function init(o) {
     opts = o || {};
     root.classList.add("journey");
@@ -194,6 +243,7 @@
       if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); next(); }
       if (e.key === "ArrowUp" || e.key === "PageUp") { e.preventDefault(); back(); }
     });
+    listenLean();
     // after a reply is sent, the ending begins on its own
     doc.addEventListener("rsvp:sent", function () {
       setTimeout(function () { if (doc.activeElement && doc.activeElement.blur) doc.activeElement.blur(); goTo(STOPS.length - 1); }, 3200);
@@ -325,11 +375,23 @@
     var lightUp = ss(1.0, 2.4, s);
     var bloom = ss(15.6, 16.7, s) + .18 * bump(5.7, 6.3, 6.9, 7.5, s);   // the rose window: brighter for the verse, then floods
     var finaleOn = s > 16.6;
+    var saveC = bump(2.45, 2.95, 3.2, 3.6, s), verseC = bump(5.6, 6.0, 6.75, 7.1, s);   // Save the Date / the verse resting in the centre
+    leanNow = leanStep(now, dt);
     if (window.Nave) {
       window.Nave.P.yaw = yaw;
-      // the church steps back (dims) while a card or words are in front of it
+      // the camera leans and floats; while something is held in front of it,
+      // it circles that instead, so the words stay still and the church
+      // swings gently behind them (only over the real church, not the picture)
+      var live = window.Nave.isReady();
+      P.ox = live ? leanNow.hx + leanNow.fx : 0; P.oy = live ? leanNow.hy + leanNow.fy : 0;
+      P.orbit = Math.max(holdAny, saveC, verseC); P.pivot = HOLD;
+      // the church steps back (dims) while a card or words are in front of
+      // it, and the lens pulls focus to them: the church goes soft, then
+      // sharpens again as you walk on
       var dim = Math.max(holdAny, bump(1.15, 1.45, 2.05, 2.35, s), bump(2.35, 2.9, 3.2, 3.6, s), bump(5.6, 6.0, 6.75, 7.1, s));
-      if (!finaleOn || s < 17.6) window.Nave.draw(now, { camZ: camZ, yaw: yaw, expo: .04 + .96 * lightUp, ignite: ss(1.05, 2.6, s), win: ss(1.8, 2.9, s), bloom: bloom, dim: dim });
+      // (a little less on an upright phone, where the church is mostly what's around the card)
+      var focus = Math.max(FOCUS * (VW < VH ? .8 : 1) * holdAny, FOCUS_WORDS * saveC, FOCUS_WORDS * verseC);
+      if (!finaleOn || s < 17.6) window.Nave.draw(now, { camZ: camZ, yaw: yaw, expo: .04 + .96 * lightUp, ignite: ss(1.05, 2.6, s), win: ss(1.8, 2.9, s), bloom: bloom, dim: dim, focus: focus });
     }
     setStyle(el.nave, "nv", "visibility", s > 17.6 ? "hidden" : "visible");
 
@@ -340,14 +402,14 @@
 
     /* 3 · Save the Date hangs in the aisle */
     // it settles in the centre of the screen, rests, then you walk through it
-    anchor(el.save, "sv", 0, 2.05, SAVE_Z, 2.6, ss(2.35, 2.9, s), 1.6, bump(2.45, 2.95, 3.2, 3.6, s));
+    anchor(el.save, "sv", 0, 2.05, SAVE_Z, 2.6, ss(2.35, 2.9, s), 1.6, saveC);
 
     /* 4 · the cards */
     cards.forEach(function (c) { placeCard(c, s); });
 
     /* the verse hangs in the aisle under the brightening rose window: it
        settles, its words light up, it rests, then you walk through it */
-    anchor(el.verse, "vs", 0, 1.75, VERSE_Z, 2.4, ss(5.6, 5.95, s), 1.4, bump(5.6, 6.0, 6.75, 7.1, s));
+    anchor(el.verse, "vs", 0, 1.75, VERSE_Z, 2.4, ss(5.6, 5.95, s), 1.4, verseC);
     setStyle(el.verse, "vs", "--p", clamp((s - 5.75) / .75, 0, 1).toFixed(4));
 
     /* 5 · the light */
@@ -363,6 +425,12 @@
     if (finaleOn) {
       var f = clamp((s - 16.75) / (TOTAL - 16.75), 0, 1);
       setStyle(el.photo, "ph", "transform", "scale(" + (1.0 + .085 * f).toFixed(4) + ")");
+      // out of the light the photograph develops like a print: overexposed at
+      // first, so the two of them appear first, dark against the glow, then
+      // the arches come down to their true tones (rather than a white veil
+      // lifting, which greys the whole picture)
+      var ex = 1 - ss(16.85, 18.1, s);
+      setStyle(el.photo, "pe", "filter", ex > .002 ? "brightness(" + (1 + 2.2 * ex * ex).toFixed(3) + ")" : "none");
       var wr = ss(17.25, 18.0, s);
       setStyle(el.fin.names, "fnn", "--write", wr.toFixed(4));
       setStyle(el.fin.full, "ff", "opacity", ss(17.9, 18.25, s).toFixed(3));
@@ -421,9 +489,16 @@
     var away = st.stay ? 1 - ss(st.b + .02, st.b + .3, s) : 1;   // the reply card dissolves into the light
     // the card comes into view as the camera turns to it (not hanging empty in the distance)
     o = Math.max(o * ss(.12, .6, h), h) * away;
+    // as the guest leans and the camera circles the card, the card is seen a
+    // little from that side (a degree or two; flat when nobody leans, so the
+    // words stay crisp)
+    var tilt = "", L = leanNow;
+    if (p && h > 0 && L && window.Nave.isReady() && (Math.abs(L.hx) > .002 || Math.abs(L.hy) > .002)) {
+      tilt = " perspective(" + Math.round(p.s * p.dz) + "px) rotateY(" + (-Math.atan2(L.hx, HOLD) * 57.3 * h).toFixed(2) + "deg) rotateX(" + (-Math.atan2(L.hy, HOLD) * 57.3 * h).toFixed(2) + "deg)";
+    }
     setStyle(node, key, "visibility", o > .002 ? "visible" : "hidden");
     setStyle(node, key, "opacity", o.toFixed(3));
-    setStyle(node, key, "transform", "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) translate(-50%,-50%) scale(" + Math.min(sc, 1.3 * big).toFixed(4) + ")");
+    setStyle(node, key, "transform", "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) translate(-50%,-50%)" + tilt + " scale(" + Math.min(sc, 1.3 * big).toFixed(4) + ")");
     // the words inside reveal one after another once the card has settled
     var held = h > .97;
     if (held !== c.held) { c.held = held; node.classList.toggle("is-held", held); }

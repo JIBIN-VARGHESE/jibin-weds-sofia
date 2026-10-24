@@ -36,12 +36,12 @@ Open **`config.js`**. It holds the names, dates, times, venues, addresses, map l
 
 The page is one continuous scene, run by `assets/js/journey.js`. Scrolling doesn't move content up the page; it moves a camera through a 3D church (`assets/js/nave.js`, WebGL). Everything is placed from **one eased scroll value per frame**, so the church, cards and light never drift apart.
 
-1. **Arrival:** your photo and names, then a fade to black.
+1. **Arrival:** your photo and names (the photo drifts slowly closer while they are read); the wax seal cracks in two when tapped, then a fade to black.
 2. **The church wakes:** "In the presence of God and our families…", candles light one by one down the aisle, then the windows.
 3. **Save the Date** hangs in the air of the aisle; you walk through it.
 4. **Stations:** invitation, engagement, ceremony, reception, countdown, RSVP. Each card stands in the aisle. As you reach it, the camera turns to it, it comes to the centre and holds while you read, then you walk on past. The verse appears between the invitation and the engagement, under the brightening rose window.
 5. **The light:** at the altar the rose window swells until light fills the screen ("Your presence would make our celebration complete").
-6. **Together:** out of the light, the couple photo. It drifts slowly closer, gold dust floats, the names write themselves, the verse and one candle appear.
+6. **Together:** out of the light, the couple photo, developing like a print: overexposed at first, so the two of you appear first against the glow. It drifts slowly closer, gold dust floats, the names write themselves, the verse and one candle appear.
 
 **Chapters.** The page doesn't scroll. Guests tap **Continue** (or swipe once) to move to the next chapter, and a small **Back** returns; the journey then plays on its own: the camera glides, turns to the next card, the card settles and its words reveal. The opening (photo → church → Save the Date → invitation) and the ending play by themselves; the opening waits until the names, date and place are fully shown. The opening plays by itself: a line at the bottom ("Sit back — your invitation unfolds on its own") says so, and glows if someone scrolls. After it, a tap or swipe while the journey moves hurries it to the next stop. Save the Date and the verse hang in the aisle; each rests a moment and the camera walks through it.
 
@@ -51,6 +51,11 @@ The page is one continuous scene, run by `assets/js/journey.js`. Scrolling doesn
 - `CAM` lists the camera's position along the aisle at given scroll points.
 
 Keep the stations and the camera points in step.
+
+**Focus and the living camera.** Also at the top of `journey.js`:
+- `FOCUS`, `FOCUS_WORDS`: how soft the church goes behind a card and behind words in the aisle (0 = never, .4 a little, 1 soft). Like a camera pulling focus: it softens as a card arrives and sharpens as you walk on. Upright phones get a little less (`.8 ×`). A device already struggling at its lowest resolution skips it.
+- `LEAN`: how far the camera leans (metres) with the mouse on a computer, or with the tilt of the phone on Android. iPhones only give the tilt after a permission pop-up, so there the camera only floats. While a card is held the camera circles it, so the card stays still and the church swings gently behind it, and the card is seen a degree or two from that side.
+- `FLOAT`: how far the camera floats by itself, like a steady hand (metres).
 
 
 **Reduce motion / no JavaScript:** the same scenes stack as a calm page over a still, lit church.
