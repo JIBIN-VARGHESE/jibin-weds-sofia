@@ -174,8 +174,8 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .nave > * { position: absolute; }
 .nave__gl { inset: 0; width: 100%; height: 100%; display: block; }
 .nave--still { background: #060403; }
-.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261024l") 50% 40% / cover no-repeat; }
-@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261024l"); } }
+.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261024m") 50% 40% / cover no-repeat; }
+@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261024m"); } }
 .nave__vignette { inset: 0; z-index: 5; background: radial-gradient(130% 95% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
 
 /* ======================================================= HERO (film) */
@@ -187,14 +187,11 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 }
 .layer { position: absolute; will-change: transform; }
 .hero__film picture { display: block; width: 100%; height: 100%; }
-.hero__film { inset: 0; }
-.hero__photo { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; transform-origin: 50% 30%; transition: opacity 1.4s var(--ease); }
-/* as the curtain lifts the camera is already moving: a slow push towards
-   the two of them while the names are read (on the compositor, so it stays
-   smooth while the church is being built) */
-.is-ready .hero__photo { animation: hero-push 18s cubic-bezier(.2, .55, .3, 1) both; }
-@keyframes hero-push { from { transform: scale(1); } to { transform: scale(1.055); } }
-.no-push .hero__photo { animation: none; }   /* test switch ?off=push */
+/* the photo's slow push and its zoom as it fades are one transform on this
+   frame, written by journey.js, centred on the two of them. (A separate CSS
+   animation on the photo inside it made Android phones flicker.) */
+.hero__film { inset: 0; transform-origin: 50% 30%; }
+.hero__photo { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; transition: opacity 1.4s var(--ease); }
 /* a photograph that arrives after the curtain fades in, never pops in half drawn */
 .hero__photo.is-loading, .finale__photo img.is-loading { opacity: 0; }
 .hero__shade {
@@ -432,12 +429,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261024l") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024l"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024l"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024l"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024l"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024l"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261024m") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024m"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024m"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024m"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024m"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024m"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
