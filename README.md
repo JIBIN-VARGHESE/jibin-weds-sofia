@@ -58,12 +58,11 @@ Keep the stations and the camera points in step.
 | Layer | File | Notes |
 |---|---|---|
 | Opening picture | `assets/images/hero/hero-portrait.webp`, `hero-landscape.webp` | the top of your collage, fading into the dark where the names sit; on wide screens it stands over a blurred copy of itself |
-| Floor, carpet, walls, side-aisle windows | `floor.webp`, `carpet.webp`, `wall.webp`, `aisle.webp` | rendered for this site; they repeat |
-| Pillars, arches, pews | `pier.webp`, `arch.webp`, `pew.webp`, `pewend.webp` | rendered for this site |
-| Altar wall (rose window, altar, candles) | `altar.webp` | rendered for this site |
+| The church | `assets/js/nave.js` | real 3D, built and painted in code on load: fluted columns with leafy capitals, pointed arcades, a rib vault (starry over the sanctuary), stained-glass lancets and a rose window, panelled pews, four bronze chandeliers, lanterns, marble steps, the altar with its crimson frontal and candles, a reredos with starry niches. Nothing to download |
+| Still church (no graphics chip, or "reduce motion") | `assets/images/nave/still-portrait.webp`, `still-landscape.webp` | renders of the same church |
 | The couple (finale) | `assets/images/closing/couple-arches.webp` | your AI-generated photo |
 
-All church textures are in `assets/images/nave/`; paths are listed in `config.js → art`. Texture sizes are powers of two (512, 1024, 2048); keep them that way if you replace one.
+**Changing the church.** Its plan is at the top of `nave.js` (`M`: pier spacing, nave width, pews, altar) and in `build()`; the light in `render()` (`amb` for the overall level, `points` for the chandeliers, lanterns and sanctuary); the stone, marble, wood, carpet and glass are painted by the `…Tex()` functions. About 110k triangles and ~20 draw calls for the building, so phones keep up; if a phone struggles, the church is drawn at a lower resolution automatically.
 
 **Credits.** Both photos are your own, so no credit line is needed.
 

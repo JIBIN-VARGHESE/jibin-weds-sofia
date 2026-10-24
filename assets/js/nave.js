@@ -1,25 +1,104 @@
 /* =============================================================================
    The nave — a small WebGL renderer for the church interior behind the page.
-   World units are metres. The camera stands at eye height in the aisle; its
-   position, turn (yaw), the light level and the candles are all set from
-   outside by journey.js, once per frame, from the same scroll value that
-   moves every card. Nave.project() places page elements in the same space.
+   World units are metres; the aisle runs along +z towards the altar. The
+   camera stands at eye height in the aisle; its position, turn (yaw), the
+   light level and the candles are all set from outside by journey.js, once
+   per frame, from the same value that moves every card. Nave.project()
+   places page elements in the same space.
 
-   Everything is textured quads in true perspective (floor, walls, piers,
-   arches, pews), drawn far to near, plus additive light (window
-   beams, candle glows, dust). One draw loop, GPU only — no layout work.
+   The church is real geometry, generated here on load (nothing to download
+   but this file): fluted columns with carved capitals, pointed arcades,
+   clerestory and aisle windows of stained glass, a rib vault, pews, bronze
+   chandeliers, lanterns, a stepped sanctuary with altar, reredos and a rose
+   window. Surfaces are lit per pixel by the nearest candle lights plus soft
+   daylight from the windows; stone, marble, wood and glass are painted into
+   small textures at start-up. Light beams, glows, flames and dust are added
+   on top. About 10 draw calls for the building: smooth on phones.
    Falls back to a still image when WebGL is unavailable.
    ========================================================================== */
 (function () {
   "use strict";
 
   var M = {
-    bay: 3.0, firstPier: 3.0, piers: 8,   // pier pairs every 3 m from z = 3 (the last frames the sanctuary)
-    pierX: 2.4, wallX: 2.65, aisleX: 5.6, // pier centres, nave walls, side-aisle walls
+    bay: 3.0, firstPier: 0, piers: 9,        // pier pairs every 3 m from z = 0 to 24
+    pierX: 2.6, wallX: 2.35, aisleX: 5.6,    // pier centres, nave wall face, side-aisle walls
     eye: 1.6,
-    pewFrom: 1.8, pewTo: 19.8, pewIn: .82, pewOut: 1.86,
-    coupleZ: 23.6, altarZ: 26.2, endDist: 4.3,
+    pewFrom: 1.8, pewTo: 19.8, pewIn: .85, pewOut: 2.1,
+    coupleZ: 23.6, altarZ: 28.0, endDist: 4.3,
+    west: -3,
   };
+  var SPRING = 5.07, COURSE = 7.6, VAULT = 10.5;    // arcade springing, string course, vault springing
+
+  /* ----------------------------------------------------------- shaders */
+  // the building: lit, textured triangles
+  var VS_B = [
+    "attribute vec3 aP, aN; attribute vec2 aU; attribute float aA;",
+    "uniform vec3 uCam; uniform vec4 uProj; uniform vec2 uYaw;",
+    "varying vec3 vP, vN; varying vec2 vU; varying float vA;",
+    "void main(){",
+    "  vec3 w = aP - uCam;",
+    "  vec3 v = vec3(w.x * uYaw.x - w.z * uYaw.y, w.y, w.x * uYaw.y + w.z * uYaw.x);",
+    "  vP = aP; vN = aN; vU = aU; vA = aA;",
+    "  gl_Position = vec4(v.x * uProj.x + uProj.z * v.z, v.y * uProj.y + uProj.w * v.z, v.z - .2, v.z);",
+    "}"].join("\n");
+  var FS_B = [
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH",
+    "precision highp float;",
+    "#else",
+    "precision mediump float;",
+    "#endif",
+    "uniform sampler2D uT;",
+    "uniform vec4 uAlb;    // rgb tint, a: texture mapping (0 none, 1 world triplanar, 2 uv, 3 floor)",
+    "uniform vec4 uMat;    // x: texture scale, y: specular, z: shininess, w: emission",
+    "uniform float uMetal;",
+    "uniform vec3 uEye, uAmb, uSunD, uSunC, uHaze;",
+    "uniform vec4 uLP[8]; uniform vec3 uLC[8];",
+    "uniform float uExpo, uFog;",
+    "varying vec3 vP, vN; varying vec2 vU; varying float vA;",
+    "void main(){",
+    "  vec3 n = normalize(vN);",
+    "  vec3 V = uEye - vP; float d = length(V); V /= d;",
+    "  if (dot(n, V) < 0.) n = -n;",
+    "  vec4 tx = vec4(1.);",
+    "  float ao = vA;",
+    // contact shadows on the floor: under the pews, around the piers, along the aisle walls
+    "  if (uAlb.a > 2.5) {",
+    "    tx = texture2D(uT, vP.xz * uMat.x);",
+    "    float ax = abs(vP.x);",
+    "    ao *= 1. - .6 * smoothstep(.62, .9, ax) * (1. - smoothstep(2.1, 2.35, ax)) * smoothstep(1.2, 1.55, vP.z) * (1. - smoothstep(20.3, 20.6, vP.z));",
+    "    vec2 q = vec2(ax - 2.6, mod(vP.z + 1.5, 3.) - 1.5);",
+    "    if (vP.z > -.8 && vP.z < 24.8) ao *= .45 + .55 * smoothstep(.42, 1.25, length(q));",
+    "    ao *= .55 + .45 * smoothstep(0., .9, 5.6 - ax);",
+    "  }",
+    "  else if (uAlb.a > 1.5) tx = texture2D(uT, vU);",
+    "  else if (uAlb.a > .5) {",
+    "    vec3 a = abs(n);",
+    "    vec2 c = (a.x > a.y && a.x > a.z) ? vP.zy : (a.y > a.z ? vP.xz : vP.xy);",
+    "    tx = texture2D(uT, c * uMat.x);",
+    "  }",
+    "  if (tx.a < .5) discard;",
+    "  vec3 base = uAlb.rgb * tx.rgb;",
+    // soft light from above, a warm bounce from below, and the windows' daylight
+    "  float hy = 1. - .45 * smoothstep(2., 13., vP.y);",
+  "  vec3 lit = (uAmb * (.66 + .34 * n.y) + uAmb * vec3(.5, .34, .22) * max(-n.y, 0.) * .6) * ao * hy;",
+    "  lit += uSunC * (max(dot(n, uSunD), 0.) * .8 + .2) * ao;",
+    "  vec3 spec = vec3(0.);",
+    "  for (int i = 0; i < 8; i++) {",
+    "    vec3 L = uLP[i].xyz - vP; float d2 = dot(L, L); L *= inversesqrt(d2);",
+    "    float att = 1. / (1. + d2 * uLP[i].w);",
+    "    float ndl = max(dot(n, L), 0.);",
+    "    lit += uLC[i] * (ndl * .92 + .08) * att * (.3 + .7 * ao);",
+    "    spec += uLC[i] * pow(max(dot(n, normalize(L + V)), 0.), uMat.z) * att * ndl;",
+    "  }",
+    "  vec3 col = base * lit + spec * uMat.y * mix(vec3(1.), base * 1.6, uMetal) * ao;",
+    "  col += base * uMat.w;",
+    "  col = mix(uHaze, col, exp(-d * uFog));",
+    "  col *= uExpo;",
+    // a filmic curve: deep shadows, warm soft highlights
+    "  col = clamp((col * (2.51 * col + .03)) / (col * (2.43 * col + .59) + .14), 0., 1.);",
+    "  gl_FragColor = vec4(col, 1.);",
+    "}"].join("\n");
+  // light: camera-facing or world quads (beams, glows, flames, pools), additive
   var VS = [
     "attribute vec2 aQ;",
     "uniform vec3 uO, uU, uV, uCam;",
@@ -61,9 +140,9 @@
     "  gl_FragColor = vec4(vec3(1., .8, .52) * a, 0.);",
     "}"].join("\n");
 
-  var gl, canvas, prog, progP, U = {}, UP = {}, quadBuf, moteBuf, tex = {}, ready = false;
+  var gl, canvas, prog, progB, progP, U = {}, UB = {}, UP = {}, quadBuf, moteBuf, tex = {}, ready = false;
   var W = 0, H = 0, dpr = 1, k = 1, hz = 0, CW = 0;   // CW: page width in CSS px, kept from the last resize
-  var solids = [], lights = [], motes, moteData, NM = 70;
+  var lights = [], points = [], motes, moteData, NM = 70, draws = [];
   // P: what journey.js asks for each frame
   var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0 };
   var opts = {}, dirty = true, slowFrames = 0, host, lastDraw = 0, lastKey = "", acc = 0, accN = 0;
@@ -85,40 +164,222 @@
   function texture(src, repeat) {
     var t = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, t);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
-    var o = { t: t, ok: false };
-    function upload(img) {
-      gl.bindTexture(gl.TEXTURE_2D, t);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-      gl.generateMipmap(gl.TEXTURE_2D);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      var wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE);
-      if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
-      o.ok = true; dirty = true;
-    }
-    if (typeof src === "string") {
-      var img = new Image();
-      img.decoding = "async";
-      img.onload = function () { upload(img); };
-      afterHero(function () { img.src = src; });
-    } else upload(src);
-    return o;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    var wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+    if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    return { t: t };
   }
-  // the church's pictures download after the opening photo, so they don't
-  // compete with it on a slow connection (the church appears seconds later)
-  var heroWait = null;
-  function afterHero(fn) {
-    if (!heroWait) {
-      heroWait = [];
-      var go = function () { if (!Array.isArray(heroWait)) return; var q = heroWait; heroWait = { push: function (f) { f(); } }; q.forEach(function (f) { f(); }); };
-      var hero = document.querySelector(".hero__photo");
-      if (!hero || hero.complete) setTimeout(go, 0);
-      else { hero.addEventListener("load", go); hero.addEventListener("error", go); setTimeout(go, 2500); }
+
+  /* ------------------------------------------------ painted textures
+     Stone, marble, wood, carpet and stained glass, drawn into canvases on
+     load (a few milliseconds), so the church needs no picture downloads. */
+  function canvas2(w, h, fn) {
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var x = c.getContext("2d"), img = x.createImageData(w, h);
+    fn(img.data, w, h);
+    x.putImageData(img, 0, 0);
+    return c;
+  }
+  var seed = 7;
+  function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  // tileable value noise on a g×g lattice, sampled at (u, v) in 0..1
+  function lattice(g) { var a = new Float32Array(g * g); for (var i = 0; i < a.length; i++) a[i] = rnd(); return { g: g, a: a }; }
+  function vn(L, u, v) {
+    var g = L.g, x = u * g, y = v * g, xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    var x0 = ((xi % g) + g) % g, y0 = ((yi % g) + g) % g, x1 = (x0 + 1) % g, y1 = (y0 + 1) % g, a = L.a;
+    var t = a[y0 * g + x0] + (a[y0 * g + x1] - a[y0 * g + x0]) * fx, b = a[y1 * g + x0] + (a[y1 * g + x1] - a[y1 * g + x0]) * fx;
+    return t + (b - t) * fy;
+  }
+  function put(d, o, r, g, b, a) { d[o] = r < 0 ? 0 : r > 255 ? 255 : r; d[o + 1] = g < 0 ? 0 : g > 255 ? 255 : g; d[o + 2] = b < 0 ? 0 : b > 255 ? 255 : b; d[o + 3] = a == null ? 255 : a; }
+
+  // warm limestone in ashlar courses: 512 px = 2 m
+  function stoneTex() {
+    var n1 = lattice(8), n2 = lattice(32), n3 = lattice(128);
+    var rows = [], RH = 85;
+    for (var r = 0; r < Math.ceil(512 / RH); r++) {
+      var edges = [], x = Math.floor(rnd() * 140);
+      while (x < 512) { edges.push(x); x += 130 + Math.floor(rnd() * 110); }
+      var tints = edges.map(function () { return .88 + rnd() * .2; });
+      rows.push({ e: edges, t: tints });
     }
-    heroWait.push(fn);
+    return canvas2(512, 512, function (d, w, h) {
+      for (var y = 0; y < h; y++) {
+        var row = rows[Math.floor(y / RH)], ry = y % RH, rh = Math.min(RH, 512 - Math.floor(y / RH) * RH);
+        for (var x = 0; x < w; x++) {
+          var e = row.e, bi = e.length - 1, dx = 999;
+          for (var i = 0; i < e.length; i++) { if (x >= e[i]) bi = i; dx = Math.min(dx, Math.abs(x - e[i]), Math.abs(x - e[i] - 512), Math.abs(x - e[i] + 512)); }
+          var dm = Math.min(dx, ry, rh - ry);
+          var u = x / w, v = y / h;
+          var f = .78 + .22 * vn(n1, u, v) + .12 * vn(n2, u, v) + .07 * vn(n3, u, v);
+          var t = row.t[bi] * f;
+          if (dm < 1.5) t *= .82; else if (dm < 4) t *= .93 + .017 * dm;   // fine joints and a chiselled edge
+          put(d, (y * w + x) * 4, 226 * t, 208 * t, 178 * t);
+        }
+      }
+    });
+  }
+  // polished floor: cream and rose-grey marble in 1.2 m squares, 512 px = 2.4 m
+  function marbleTex() {
+    var n1 = lattice(6), n2 = lattice(24), n3 = lattice(96);
+    return canvas2(512, 512, function (d, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var u = x / w, v = y / h, tile = ((x >> 8) + (y >> 8)) & 1;
+        var turb = vn(n1, u, v) * 2 + vn(n2, u, v) + vn(n3, u, v) * .5;
+        var vein = Math.pow(1 - Math.abs(Math.sin((u * 3 + v * 2) * 6.283 + turb * 4.2)), 18);
+        var f = .92 + .08 * vn(n2, u, v) - .2 * vein;
+        var gx = Math.min(x % 256, 256 - x % 256), gy = Math.min(y % 256, 256 - y % 256);
+        if (Math.min(gx, gy) < 1.5) f *= .62;
+        if (tile) put(d, (y * w + x) * 4, 222 * f, 210 * f, 190 * f);
+        else put(d, (y * w + x) * 4, 186 * f, 158 * f, 128 * f);
+      }
+    });
+  }
+  // dark walnut, grain along x: 256 px = 1.1 m
+  function woodTex() {
+    var n1 = lattice(4), n2 = lattice(16), n3 = lattice(64);
+    return canvas2(256, 256, function (d, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var u = x / w, v = y / h;
+        var g = vn(n1, u * .25, v) * 3 + vn(n2, u * .5, v) * .8;
+        var s = .5 + .5 * Math.sin(v * 6.283 * 22 + g * 7);
+        var f = .84 + .12 * s + .1 * vn(n3, u, v * 4);
+        put(d, (y * w + x) * 4, 84 * f, 38 * f, 22 * f);
+      }
+    });
+  }
+  // the aisle runner: deep red with gold borders (u across, v along)
+  function carpetTex() {
+    var n = lattice(32);
+    return canvas2(128, 256, function (d, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var u = x / (w - 1), f = .9 + .14 * vn(n, u, y / h);
+        var m = Math.abs(((x + y) % 16) - 8) < 1 && u > .14 && u < .86 ? .9 : 1;    // a faint diamond weave
+        var e = Math.min(u, 1 - u), o = (y * w + x) * 4;
+        if (e < .035) put(d, o, 70 * f, 10 * f, 12 * f);
+        else if (e > .06 && e < .085) put(d, o, 168 * f, 120 * f, 56 * f);
+        else put(d, o, 118 * f * m, 16 * f * m, 22 * f * m);
+      }
+    });
+  }
+  // a night-blue vault with gold stars, over the sanctuary
+  function starTex() {
+    var stars = [];
+    for (var i = 0; i < 26; i++) stars.push([rnd() * 256, rnd() * 256, 2 + rnd() * 2.5]);
+    return canvas2(256, 256, function (d, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var r = 30, g = 44, b = 92, s = 0;
+        for (var i = 0; i < stars.length; i++) {
+          var dx = Math.abs(x - stars[i][0]), dy = Math.abs(y - stars[i][1]);
+          dx = Math.min(dx, 256 - dx); dy = Math.min(dy, 256 - dy);
+          var st = stars[i][2] - (Math.min(dx, dy) * 2.4 + Math.max(dx, dy) * .55);   // a four-pointed star
+          if (st > s) s = st;
+        }
+        s = Math.min(1, s);
+        put(d, (y * w + x) * 4, r + (236 - r) * s, g + (186 - g) * s, b + (96 - b) * s);
+      }
+    });
+  }
+  var JEWELS = [[150, 28, 30], [30, 52, 132], [30, 100, 64], [200, 146, 56], [100, 34, 90], [170, 72, 34], [44, 96, 140]];
+  function glassNoise(L, u, v) { return .78 + .3 * vn(L, u, v); }
+  // a lancet window (pointed top), w × h metres, springing at s metres; canvas top = window top
+  function lancetTex(wm, hm, sm) {
+    var n = lattice(16), cells = lattice(64);
+    var R = wm * .8, hw = wm / 2;
+    return canvas2(128, 512, function (d, w, h) {
+      for (var py = 0; py < h; py++) for (var px = 0; px < w; px++) {
+        var x = (px + .5) / w * wm, y = (1 - (py + .5) / h) * hm, o = (py * w + px) * 4;
+        var inside = y <= sm || (Math.hypot(x - R, y - sm) <= R && Math.hypot(x - (wm - R), y - sm) <= R);
+        if (!inside) { put(d, o, 0, 0, 0, 0); continue; }
+        var u = x / wm, v = y / hm, lead = false, col;
+        var bx = Math.min(x, wm - x);
+        if (bx < .07 || y < .07) {                                  // the border band
+          col = Math.floor(y / .14) % 2 ? JEWELS[3] : JEWELS[0];
+          if (Math.abs(bx - .07) < .012 || (y < .07 && Math.abs(y - .07) < .012)) lead = true;
+          if (bx < .07 && Math.abs((y % .14) - .07) > .062) lead = true;
+        } else {
+          // medallions down the middle, quarries around them
+          var mc = [hm * .3, hm * .62], inMed = -1;
+          for (var m = 0; m < mc.length; m++) { var r = Math.hypot(x - hw, y - mc[m]); if (r < hw * .5) { inMed = m; if (Math.abs(r - hw * .5) < .014 || Math.abs(r - hw * .22) < .012) lead = true; col = r < hw * .22 ? JEWELS[3] : JEWELS[m % 2 ? 1 : 0]; if (r >= hw * .22) { var a = Math.atan2(y - mc[m], x - hw); if (Math.abs(Math.sin(a * 4)) < .1) lead = true; } } }
+          if (inMed < 0) {
+            var qa = (x / .16 + y / .22), qb = (x / .16 - y / .22);
+            var ia = Math.floor(qa), ib = Math.floor(qb);
+            if (Math.abs(qa - Math.round(qa)) < .07 || Math.abs(qb - Math.round(qb)) < .07) lead = true;
+            var pick = Math.floor(vn(cells, ((ia * 7 + 64) % 64) / 64, ((ib * 13 + 64) % 64) / 64) * 7) % 7;
+            col = pick < 5 ? [[214, 186, 132], [196, 176, 140], [222, 200, 150]][pick % 3] : JEWELS[pick];   // mostly warm pale glass, some jewels
+          }
+        }
+        if (Math.abs(bx - hw) > hw - .015 && y > sm) lead = true;
+        var f = glassNoise(n, u, v * 2);
+        if (lead) put(d, o, 24, 18, 14);
+        else put(d, o, col[0] * f, col[1] * f, col[2] * f);
+      }
+    });
+  }
+  // the rose window: twelve petals and a ring of roundels around a quatrefoil
+  function roseTex() {
+    var n = lattice(16);
+    return canvas2(512, 512, function (d, w, h) {
+      for (var py = 0; py < h; py++) for (var px = 0; px < w; px++) {
+        var x = (px + .5) / w * 2 - 1, y = (py + .5) / h * 2 - 1, r = Math.hypot(x, y), a = Math.atan2(y, x), o = (py * w + px) * 4;
+        if (r > 1) { put(d, o, 0, 0, 0, 0); continue; }
+        var lead = false, col, seg = (a + Math.PI) / (Math.PI * 2) * 12, si = Math.floor(seg), sf = seg - si;
+        if (r < .2) {
+          var q = Math.abs(Math.cos(a * 2));
+          col = r < .2 * (.55 + .45 * q) ? JEWELS[3] : JEWELS[0];
+          if (Math.abs(r - .2 * (.55 + .45 * q)) < .012) lead = true;
+        } else if (r < .7) {
+          var pr = (r - .2) / .5, half = Math.abs(sf - .5) * 2;          // petal: a pointed lancet radiating out
+          var inPetal = half < .82 * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, pr - .6) / .4, 2)));
+          col = inPetal ? (si % 2 ? JEWELS[1] : JEWELS[0]) : JEWELS[6];
+          if (inPetal && Math.abs(r - .45) < .01) lead = true;
+          if (Math.abs(half - .82 * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, pr - .6) / .4, 2)))) < .05) lead = true;
+          if (inPetal && r > .47 && r < .62) col = si % 2 ? JEWELS[2] : JEWELS[3];
+        } else {
+          var ca = (Math.floor((a + Math.PI) / (Math.PI * 2) * 24) + .5) / 24 * Math.PI * 2 - Math.PI;
+          var cx = Math.cos(ca) * .84, cy = Math.sin(ca) * .84, cr = Math.hypot(x - cx, y - cy);
+          col = cr < .1 ? JEWELS[(Math.floor((a + Math.PI) / (Math.PI * 2) * 24)) % 2 ? 3 : 4] : JEWELS[1];
+          if (Math.abs(cr - .1) < .012) lead = true;
+        }
+        if (Math.abs(r - .2) < .01 || Math.abs(r - .7) < .012 || r > .975) lead = true;
+        if (r > .2 && r < .7 && (sf < .02 || sf > .98)) lead = true;
+        var f = glassNoise(n, (x + 1) / 2, (y + 1) / 2);
+        if (lead) put(d, o, 24, 18, 14); else put(d, o, col[0] * f, col[1] * f, col[2] * f);
+      }
+    });
+  }
+  // the niches of the reredos: a pointed arch of night blue with gold stars and a gold border
+  function nicheTex() {
+    return canvas2(64, 128, function (d, w, h) {
+      var wm = 1, hm = 2, sm = 1.35, R = .8;
+      for (var py = 0; py < h; py++) for (var px = 0; px < w; px++) {
+        var x = (px + .5) / w * wm, y = (1 - (py + .5) / h) * hm, o = (py * w + px) * 4;
+        var dl = Math.hypot(x - R, y - sm), dr = Math.hypot(x - (wm - R), y - sm);
+        var inside = y <= sm || (dl <= R && dr <= R);
+        if (!inside) { put(d, o, 0, 0, 0, 0); continue; }
+        var edge = Math.min(x, wm - x, y, y > sm ? Math.min(R - dl, R - dr) : 9);
+        if (edge < .07) put(d, o, 214, 160, 72);
+        else { var g = .55 + .45 * (y / hm); put(d, o, 26 * g, 38 * g, 86 * g); if (((px * 7 + py * 13) % 37) === 0) put(d, o, 230, 190, 110); }
+      }
+    });
+  }
+  // the altar frontal: crimson damask, a gold border and a budded cross
+  function frontalTex() {
+    var n = lattice(32);
+    return canvas2(256, 128, function (d, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var o = (y * w + x) * 4, e = Math.min(x, w - 1 - x, y, h - 1 - y), cx = Math.abs(x - w / 2), cy = y - h / 2;
+        var cross = (cx < 3.5 && Math.abs(cy) < 40) || (Math.abs(cy + 12) < 3.5 && cx < 24) || Math.hypot(cx, cy + 40) < 6 || Math.hypot(cx - 24, cy + 12) < 6 || Math.hypot(cx, cy - 40) < 6 * 0;
+        var dam = .88 + .12 * Math.sin(x * .35) * Math.sin(y * .35) + .08 * vn(n, x / w, y / h);
+        if (e < 8 || (e > 11 && e < 13) || cross) put(d, o, 214, 162, 74);
+        else put(d, o, 112 * dam, 16 * dam, 22 * dam);
+      }
+    });
   }
   // procedural sprites (no download): soft glow, light beam, candle flame
   function sprite(w, h, draw) {
@@ -146,7 +407,7 @@
       }
       x.putImageData(img, 0, 0);
     }));
-    tex.flame = texture(sprite(64, 128, function (x, w, h) {
+    tex.flame = texture(sprite(64, 128, function (x) {
       var g = x.createRadialGradient(32, 92, 2, 32, 80, 40);
       g.addColorStop(0, "rgba(255,250,235,1)"); g.addColorStop(.35, "rgba(255,214,140,.95)");
       g.addColorStop(.7, "rgba(255,150,60,.35)"); g.addColorStop(1, "rgba(255,120,40,0)");
@@ -155,90 +416,414 @@
     }));
   }
 
-  /* ---------------------------------------------------------- the scene */
-  // a quad: origin O, edge vectors Ux (u direction) and Vy (v direction, "up")
-  function Q(t, O, Ux, Vy, uv, tint, o) {
+  /* ------------------------------------------------- geometry builder
+     Each material collects triangles into chunks of < 65k vertices
+     (position, normal, uv, ambient occlusion). Normals face either way:
+     the shader turns them toward the eye. */
+  function Mesh() { this.chunks = []; this.v = []; this.i = []; this.n = 0; }
+  Mesh.prototype.room = function (k) { if (this.n + k > 65000) this.flush(); };
+  Mesh.prototype.flush = function () { if (this.n) this.chunks.push({ v: new Float32Array(this.v), i: new Uint16Array(this.i) }); this.v = []; this.i = []; this.n = 0; };
+  Mesh.prototype.vert = function (p, nn, u, v, a) { this.v.push(p[0], p[1], p[2], nn[0], nn[1], nn[2], u, v, a); return this.n++; };
+  var G = {};
+  function mesh(name) { return G[name] || (G[name] = new Mesh()); }
+
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function norm(a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+  function add(a, b, s) { return [a[0] + b[0] * s, a[1] + b[1] * s, a[2] + b[2] * s]; }
+
+  // a parametric surface: f(i, j) for i in 0..nu, j in 0..nv
+  function surf(m, nu, nv, f, o) {
     o = o || {};
-    return { t: t, O: O, U: Ux, V: Vy, uv: uv || [0, 0, 1, 1], tint: tint || [1, 1, 1, 1], fog: o.fog != null ? o.fog : .055, cut: o.cut || 0,
-      z: o.z != null ? o.z : O[2], x0: o.x0, x1: o.x1, top: o.top, flick: o.flick, add: o.add };
+    m.room((nu + 1) * (nv + 1));
+    var P = [], i, j;
+    for (j = 0; j <= nv; j++) { P.push([]); for (i = 0; i <= nu; i++) P[j].push(f(i, j)); }
+    var base = m.n;
+    for (j = 0; j <= nv; j++) for (i = 0; i <= nu; i++) {
+      var ip = i + 1, im = i - 1;
+      if (o.wrap) { if (ip > nu) ip = 1; if (im < 0) im = nu - 1; } else { ip = Math.min(ip, nu); im = Math.max(im, 0); }
+      var du = sub(P[j][ip], P[j][im]), dv = sub(P[Math.min(j + 1, nv)][i], P[Math.max(j - 1, 0)][i]);
+      var nn = norm(cross(du, dv));
+      if (!isFinite(nn[0]) || (nn[0] === 0 && nn[1] === 0 && nn[2] === 0)) nn = [0, 1, 0];
+      var uv = o.uv ? o.uv(i, j, P[j][i]) : [i / nu, j / nv];
+      m.vert(P[j][i], nn, uv[0], uv[1], o.ao ? o.ao(i, j, P[j][i]) : 1);
+    }
+    for (j = 0; j < nv; j++) for (i = 0; i < nu; i++) {
+      var a = base + j * (nu + 1) + i, b = a + 1, c = a + nu + 1, e = c + 1;
+      m.i.push(a, b, c, b, e, c);
+    }
   }
-  function grey(v, a) { a = a == null ? 1 : a; return [v * a, v * a, v * a, a]; }
-  function rgba(r, g, b, a) { return [r * a, g * a, b * a, a]; }
-
-  function build() {
-    var L = M.altarZ + 3, z0 = -3, uz = function (z) { return (z - M.firstPier) / M.bay; };
-    var planes = [];
-    // floor and carpet
-    planes.push(Q(tex.floor, [-8, 0, z0], [16, 0, 0], [0, 0, L], [0, 0, 16 / 1.8, L / 1.8], grey(.95), { cut: .5 }));
-    planes.push(Q(tex.carpet, [-.75, .004, z0], [1.5, 0, 0], [0, 0, M.coupleZ + .5 - z0], [0, 0, 1, (M.coupleZ + .5 - z0) / 3], grey(1), { cut: .5 }));
-    [-1, 1].forEach(function (s) {
-      // side-aisle outer wall with its windows, and the aisle's low ceiling
-      planes.push(Q(tex.aisle, [s * M.aisleX, 0, z0], [0, 0, L], [0, 5.6, 0], [uz(z0), 0, uz(z0 + L), 1], grey(1), { cut: .5 }));
-      planes.push(Q(tex.white, [s * M.wallX, 5.6, z0], [s * (M.aisleX - M.wallX), 0, 0], [0, 0, L], null, grey(.02), { cut: .5 }));
-      // the nave wall: arcade openings, triforium and clerestory windows
-      planes.push(Q(tex.wall, [s * M.wallX, 0, z0], [0, 0, L], [0, 9.4, 0], [uz(z0), 0, uz(z0 + L), 1], grey(1), { cut: .5 }));
+  // a turned shape around a vertical axis: profile [[r, y], ...]; rf(angle, j) shapes it
+  function lathe(m, cx, cy, cz, prof, seg, rf, ao) {
+    surf(m, seg, prof.length - 1, function (i, j) {
+      var a = i / seg * Math.PI * 2, r = prof[j][0] * (rf ? rf(a, j) : 1);
+      return [cx + Math.cos(a) * r, cy + prof[j][1], cz + Math.sin(a) * r];
+    }, { wrap: true, ao: ao ? function (i, j) { return ao(i / seg * Math.PI * 2, j); } : null });
+  }
+  // a section [[a, b], ...] swept along path(t), t in 0..1; side(t, T) gives the section's "a" axis
+  function sweep(m, path, steps, sec, side, ao) {
+    var pts = [], i;
+    for (i = 0; i <= steps; i++) pts.push(path(i / steps));
+    surf(m, sec.length - 1, steps, function (si, ti) {
+      var p = pts[ti], T = norm(sub(pts[Math.min(ti + 1, steps)], pts[Math.max(ti - 1, 0)]));
+      var S = side ? side(ti / steps, T) : norm(cross(T, [0, 1, 0]));
+      var d = S[0] * T[0] + S[1] * T[1] + S[2] * T[2];
+      var Ua = norm([S[0] - T[0] * d, S[1] - T[1] * d, S[2] - T[2] * d]), Vb = cross(T, Ua);
+      return add(add(p, Ua, sec[si][0]), Vb, sec[si][1]);
+    }, { ao: ao ? function () { return ao; } : null });
+  }
+  function ring(r, n) { var s = []; for (var i = 0; i <= n; i++) { var a = i / n * Math.PI * 2; s.push([Math.cos(a) * r, Math.sin(a) * r]); } return s; }
+  function box(m, x0, y0, z0, x1, y1, z1, ao) {
+    ao = ao || [1, 1];
+    m.room(24);
+    var F = [
+      [[1, 0, 0], [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]]],
+      [[-1, 0, 0], [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]]],
+      [[0, 1, 0], [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]],
+      [[0, -1, 0], [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]]],
+      [[0, 0, 1], [[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]]],
+      [[0, 0, -1], [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]]],
+    ];
+    F.forEach(function (f) {
+      var b = m.n;
+      f[1].forEach(function (p, k) { m.vert(p, f[0], k === 1 || k === 2 ? 1 : 0, k > 1 ? 1 : 0, ao[0] + (ao[1] - ao[0]) * (y1 > y0 ? (p[1] - y0) / (y1 - y0) : 1)); });
+      m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
     });
-    // east wall around the altar, then the altar (rose window, lancets, candles)
-    planes.push(Q(tex.white, [-M.wallX, 0, M.altarZ + .02], [2 * M.wallX, 0, 0], [0, 9.4, 0], null, grey(.015), { cut: .5 }));
-    planes.push(Q(tex.altar, [-M.wallX, -.36 * 11.05, M.altarZ], [2 * M.wallX, 0, 0], [0, 11.05, 0], null, grey(1), { fog: .012, cut: .5 }));
-    solids = planes;
+  }
+  // a flat four-cornered panel with uv (for glass and niches)
+  function panel(m, p0, p1, p2, p3, uvFlip) {
+    m.room(4);
+    var nn = norm(cross(sub(p1, p0), sub(p3, p0))), b = m.n;
+    m.vert(p0, nn, 0, uvFlip ? 0 : 1, 1); m.vert(p1, nn, 1, uvFlip ? 0 : 1, 1); m.vert(p2, nn, 1, uvFlip ? 1 : 0, 1); m.vert(p3, nn, 0, uvFlip ? 1 : 0, 1);
+    m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  }
+  // a convex outline [[z, y], ...] extruded across x0..x1 (pew ends)
+  function slabX(m, poly, x0, x1, ao) {
+    var n = poly.length;
+    [x0, x1].forEach(function (x) {
+      m.room(n);
+      var b = m.n;
+      poly.forEach(function (q) { m.vert([x, q[1], q[0]], [1, 0, 0], 0, 0, ao); });
+      for (var i = 1; i < n - 1; i++) m.i.push(b, b + i, b + i + 1);
+    });
+    for (var i = 0; i < n; i++) {
+      var a = poly[i], c = poly[(i + 1) % n];
+      m.room(4);
+      var b = m.n;
+      m.vert([x0, a[1], a[0]], [0, c[0] - a[0], -(c[1] - a[1])], 0, 0, ao); m.vert([x1, a[1], a[0]], [0, c[0] - a[0], -(c[1] - a[1])], 0, 0, ao);
+      m.vert([x1, c[1], c[0]], [0, c[0] - a[0], -(c[1] - a[1])], 0, 0, ao); m.vert([x0, c[1], c[0]], [0, c[0] - a[0], -(c[1] - a[1])], 0, 0, ao);
+      m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    }
+  }
+  // a pointed (two-centred) arch between a and b springing at y0; sharp = radius / half-span
+  function pointed(a, b, y0, sharp) {
+    var h = (b - a) / 2, R = h * sharp, m = (a + b) / 2;
+    return function (t) {
+      return t <= m ? y0 + Math.sqrt(Math.max(0, R * R - Math.pow(t - (a + R), 2))) : y0 + Math.sqrt(Math.max(0, R * R - Math.pow(t - (b - R), 2)));
+    };
+  }
 
-    // depth-sorted things (piers, arches, pews, candles), drawn far to near
-    var items = [];
-    for (var i = 0; i < M.piers; i++) {
-      var z = M.firstPier + i * M.bay;
-      [-1, 1].forEach(function (s) {
-        // texture is lit from the left (for the right-hand row); mirror for the left row
-        items.push(Q(tex.pier, [s * M.pierX - .5, 0, z], [1, 0, 0], [0, 5.0, 0], s < 0 ? [1, 0, 0, 1] : [0, 0, 1, 1], grey(1), { cut: .02, x0: s * M.pierX - .5, x1: s * M.pierX + .5, top: 5 }));
-        // candle sconce on the aisle face of each pier
-        var sx = s * (M.pierX - .52), sz = z - .3;
-        items.push(Q(tex.white, [sx - .015, 2.02, sz], [.03, 0, 0], [0, .16, 0], null, rgba(.85, .78, .62, 1), { cut: .5, x0: sx, x1: sx, top: 2.2 }));
-        items.push(Q(tex.white, [sx - .06, 1.98, sz + .01], [.12, 0, 0], [0, .04, 0], null, grey(.06), { cut: .5, x0: sx, x1: sx, top: 2.1 }));
-        lights.push({ kind: "flame", p: [sx, 2.235, sz - .01], s: .07, c: [1, .9, .7], a: .95, ph: Math.random() * 9, candle: sz });
-        lights.push({ kind: "glow", p: [sx, 2.24, sz - .02], s: 1.6, c: [1, .62, .3], a: .22, ph: Math.random() * 9, candle: sz });
-        lights.push({ kind: "pool", p: [sx * .7, 0, sz - .4], s: 2.2, c: [1, .6, .3], a: .09, ph: Math.random() * 9, candle: sz });
-      });
-      items.push(Q(tex.arch, [-2.95, 4.95, z + .02], [5.9, 0, 0], [0, 4.5, 0], null, grey(1), { cut: .02, x0: -2.95, x1: 2.95, top: 9.45 }));
-      // god-rays from the left clerestory, falling across the nave to the right
-      var zc = z + M.bay / 2;
-      var D = [.55, -1, .16], len = 8.6;
-      [-.3, .3].forEach(function (dz, j) {
-        lights.push({ kind: "beam", O: [-M.wallX, 7.95, zc + dz], U: [0, 1.3, 0], V: [D[0] * len, D[1] * len, D[2] * len], c: [1, .8, .5], a: j ? .075 : .1 });
-      });
-      // lower beams from the side-aisle windows through the arcade, onto the aisle
-      var D2 = [1, -.78, .22], len2 = 6.2;
-      lights.push({ kind: "beam", O: [-M.aisleX, 2.0, zc], U: [0, 2.8, 0], V: [D2[0] * len2, D2[1] * len2, D2[2] * len2], c: [1, .78, .46], a: .11 });
-      lights.push({ kind: "pool", p: [-.1, 0, zc + 1.3], s: 2.4, c: [1, .74, .42], a: .16, ph: 0, still: true });
+  /* ---------------------------------------------------------- the church */
+  function build() {
+    var stone = mesh("stone"), vault = mesh("vault"), rib = mesh("rib"), floor = mesh("floor"), marble = mesh("marble"),
+      carpet = mesh("carpet"), wood = mesh("wood"), gold = mesh("gold"), wax = mesh("wax"), lamp = mesh("lamp"),
+      gC = mesh("glassC"), gA = mesh("glassA"), gH = mesh("glassH"), rose = mesh("rose"), stars = mesh("stars"), niche = mesh("niche"), dark = mesh("dark");
+    var X = M.wallX, Z0 = M.west, ZE = M.altarZ, ZC = M.firstPier + (M.piers - 1) * M.bay;   // ZC: where the chancel begins (24)
+    var vaultY = pointed(-X, X, VAULT, 1.5), apex = vaultY(0);
+
+    // the floor, the runner and the sanctuary steps
+    surf(floor, 1, 1, function (i, j) { return [-M.aisleX + i * 2 * M.aisleX, 0, Z0 + j * (ZE - Z0)]; });
+    var runEnd = ZC + .6;
+    surf(carpet, 1, 1, function (i, j) { return [-.75 + 1.5 * i, .006, Z0 + j * (runEnd - Z0)]; }, { uv: function (i, j) { return [i, j * (runEnd - Z0) / 2]; } });
+    for (var s3 = 0; s3 < 3; s3++) {
+      var zs = runEnd + s3 * .32, ys = .15 * (s3 + 1);
+      box(marble, -X, 0, zs, X, ys, ZE);
+      box(carpet, -.75, 0, zs - .006, .75, ys + .006, zs + .32);
     }
-    // pews: backs (facing the altar, we see them from behind) and carved ends on the aisle
-    for (var r = M.pewFrom; r <= M.pewTo + .01; r += 1) {
+    var platY = .45, zTable = 26.3;
+
+    // a run of wall between z0 and z1, from y0 to y1, at x (facing the nave)
+    function wall(m, x, z0, z1, y0, y1, aoFn) {
+      surf(m, 1, 1, function (i, j) { return [x, y0 + j * (y1 - y0), z0 + i * (z1 - z0)]; }, { ao: aoFn || function (i, j, p) { return .62 + .38 * Math.min(1, p[1] / 1.6); } });
+    }
+    // a wall face with a pointed window cut out: x, the bay z0..z1, window centre zc, width w, sill, spring, wall top
+    function windowWall(m, x, s, z0, z1, zc, w, sill, spring, y0, y1, glassMesh, depth) {
+      var a = zc - w / 2, b = zc + w / 2, arch = pointed(a, b, spring, 1.6), top = arch(zc);
+      wall(m, x, z0, a, y0, y1); wall(m, x, b, z1, y0, y1); wall(m, x, a, b, y0, sill);
+      surf(m, 16, 1, function (i, j) { var z = a + (b - a) * i / 16; return [x, j ? y1 : (z < a + .001 || z > b - .001 ? spring : arch(z)), z]; });
+      // the reveal: jambs, sill and arch, cut into the wall
+      var xd = x + s * depth;
+      surf(m, 1, 1, function (i, j) { return [x + s * depth * i, sill + j * (spring - sill), a]; }, { ao: function (i) { return 1 - .35 * i; } });
+      surf(m, 1, 1, function (i, j) { return [x + s * depth * i, sill + j * (spring - sill), b]; }, { ao: function (i) { return 1 - .35 * i; } });
+      surf(m, 1, 1, function (i, j) { return [x + s * depth * i, sill - .06 * (1 - i), a + j * w]; }, { ao: function (i) { return 1 - .3 * i; } });
+      surf(m, 16, 1, function (i, j) { var z = a + w * i / 16; return [x + s * depth * j, arch(Math.min(b, Math.max(a, z))), z]; }, { ao: function (i, j) { return 1 - .35 * j; } });
+      panel(glassMesh, [xd, sill, a], [xd, sill, b], [xd, top, b], [xd, top, a]);
+      return { top: top, a: a, b: b };
+    }
+
+    [-1, 1].forEach(function (s) {
+      var xi = s * X;
+      // west of the first pier and the chancel: solid walls
+      wall(stone, xi, Z0, M.firstPier, 0, VAULT);
+      // the arcade: a pointed arch between each pair of piers, with the clerestory above
+      for (var p = 0; p < M.piers - 1; p++) {
+        var z0 = M.firstPier + p * M.bay, z1 = z0 + M.bay, za = z0 + .49, zb = z1 - .49, zm = (z0 + z1) / 2;
+        var arch = pointed(za, zb, SPRING, 1.55);
+        // spandrel: from the arch (or the pier tops) up to the string course
+        surf(stone, 28, 1, function (i, j) {
+          var z = z0 + M.bay * i / 28;
+          return [xi, j ? COURSE : (z > za && z < zb ? arch(z) : SPRING), z];
+        }, { ao: function (i, j) { return j ? 1 : .8; } });
+        // soffit: the underside of the arch, through the wall's thickness
+        surf(stone, 24, 1, function (i, j) { var z = za + (zb - za) * i / 24; return [xi + s * .5 * j, arch(z), z]; }, { ao: function (i, j) { return .8 - .25 * j; } });
+        // two mouldings follow the arch
+        sweep(rib, function (t) { var z = za + (zb - za) * t; return [xi - s * .03, arch(z), z]; }, 24, ring(.065, 8), function () { return [1, 0, 0]; });
+        sweep(rib, function (t) { var z = za - .16 + (zb - za + .32) * t; return [xi - s * .02, pointed(za - .16, zb + .16, SPRING, 1.55)(z), z]; }, 24, ring(.04, 6), function () { return [1, 0, 0]; });
+        // clerestory: a stained-glass lancet in each bay
+        windowWall(stone, xi, s, z0, z1, zm, .92, COURSE + .35, COURSE + 1.6, COURSE, VAULT, gC, .4);
+        // the side aisle: its outer wall with a taller window, and a dark timber ceiling
+        windowWall(stone, s * M.aisleX, s, z0, z1, zm, 1.1, 1.5, 4.2, 0, 7.2, gA, .32);
+        surf(dark, 1, 1, function (i, j) { return [s * (X + .5 + (M.aisleX - X - .5) * i), 7.2, z0 + j * M.bay]; });
+      }
+      // the aisle wall west of the first pier, and its end wall by the chancel
+      wall(stone, s * M.aisleX, Z0, M.firstPier, 0, 7.2);
+      surf(dark, 1, 1, function (i, j) { return [s * (X + .5 + (M.aisleX - X - .5) * i), 7.2, Z0 + j * (M.firstPier - Z0)]; });
+      surf(stone, 1, 1, function (i, j) { return [s * (X + .5 + (M.aisleX - X - .5) * i), j * 7.2, ZC]; }, { ao: function (i, j) { return .5 + .3 * j; } });
+      // the chancel: one tall window each side
+      windowWall(stone, xi, s, ZC, ZE, (ZC + ZE) / 2 + .2, 1.0, 3.6, 7.4, 0, VAULT, gH, .45);
+      // string courses along the whole nave
+      [SPRING, COURSE, VAULT].forEach(function (y, q) {
+        sweep(rib, function (t) { return [xi - s * .04, y, Z0 + (ZE - Z0) * t]; }, 1, ring(q === 1 ? .07 : .055, 8), function () { return [1, 0, 0]; });
+      });
+    });
+
+    // the piers: plinth, moulded base, fluted shaft, leafy capital, abacus
+    var base = [[.47, .32], [.47, .36], [.41, .4], [.43, .47], [.37, .53], [.35, .6], [.31, .66]];
+    var shaft = [[.31, .66], [.3, .72], [.3, 4.2], [.31, 4.24]];
+    var cap = []; for (var c = 0; c <= 12; c++) { var t = c / 12; cap.push([.3 + .16 * t * t + .02 * Math.sin(t * Math.PI), 4.26 + .66 * t]); }
+    function flute(a) { return 1 - .085 * Math.pow(Math.max(0, Math.cos(a * 24)), .7); }
+    function fluteAO(a) { return .7 + .3 * (1 - Math.pow(Math.max(0, Math.cos(a * 24)), .7)); }
+    function leaves(a, j) {
+      var t = j / 12, l1 = Math.pow(Math.abs(Math.cos(a * 4)), 3) * Math.sin(Math.min(1, t / .55) * Math.PI) * .2;
+      var l2 = Math.pow(Math.abs(Math.sin(a * 4)), 3) * Math.max(0, Math.sin(Math.min(1, Math.max(0, (t - .35) / .55)) * Math.PI)) * .18;
+      var vol = Math.pow(Math.max(0, Math.cos(a * 4 + Math.PI / 4 * 0)), 10) * Math.max(0, (t - .7) / .3) * .25;
+      return 1 + l1 + l2 + vol;
+    }
+    for (var p2 = 0; p2 < M.piers; p2++) {
+      var zp = M.firstPier + p2 * M.bay;
       [-1, 1].forEach(function (s) {
-        var xa = s < 0 ? -M.pewOut : M.pewIn, w = M.pewOut - M.pewIn;
-        items.push(Q(tex.pew, [xa, 0, r], [w, 0, 0], [0, 1.0, 0], [0, 0, w / 1.4, 1], grey(1), { cut: .5, x0: xa, x1: xa + w, top: 1 }));
-        items.push(Q(tex.pewend, [s * M.pewIn, 0, r + .6], [0, 0, -.6], [0, 1.12, 0], null, grey(1), { cut: .5, z: r + .3, x0: s * M.pewIn, x1: s * M.pewIn, top: 1.12 }));
+        var xp = s * M.pierX;
+        box(stone, xp - .48, 0, zp - .48, xp + .48, .32, zp + .48, [.55, .9]);
+        lathe(stone, xp, 0, zp, base, 32, null, function (a, j) { return .75 + .25 * j / 6; });
+        lathe(stone, xp, 0, zp, shaft, 144, function (a, j) { return j === 1 || j === 2 ? flute(a) : 1; }, function (a, j) { return j === 1 || j === 2 ? fluteAO(a) : .9; });
+        lathe(stone, xp, 0, zp, cap, 64, leaves, function (a, j) { var l = leaves(a, j) - 1; return .72 + Math.min(.28, l * 1.6); });
+        box(stone, xp - .49, 4.92, zp - .49, xp + .49, SPRING, zp + .49, [.85, 1]);
+        // a vaulting shaft rising from the capital to the vault
+        lathe(rib, s * (X - .06), 0, zp, [[.09, SPRING], [.09, VAULT - .1], [.13, VAULT - .05], [.13, VAULT + .02]], 16);
+        // a bronze lantern on the aisle side of the pier
+        var lx = s * (M.pierX - .58), ly = 2.55;
+        box(gold, Math.min(lx, s * (M.pierX - .3)), ly + .2, zp - .025, Math.max(lx, s * (M.pierX - .3)), ly + .24, zp + .025);
+        lathe(gold, lx, ly, zp, [[.0, .3], [.05, .3], [.11, .22], [.11, .2]], 6);
+        lathe(lamp, lx, ly, zp, [[.095, .2], [.08, -.08]], 6);
+        for (var lb = 0; lb < 6; lb++) {
+          var la = lb / 6 * Math.PI * 2, bx2 = lx + Math.cos(la) * .1, bz2 = zp + Math.sin(la) * .1;
+          box(gold, bx2 - .008, ly - .08, bz2 - .008, bx2 + .008, ly + .2, bz2 + .008);
+        }
+        lathe(gold, lx, ly, zp, [[.09, -.08], [.06, -.12], [.0, -.16]], 6);
+        lights.push({ kind: "flame", p: [lx, ly + .02, zp], s: .07, c: [1, .9, .7], a: .9, ph: Math.random() * 9, candle: zp });
+        lights.push({ kind: "glow", p: [lx, ly + .04, zp - .01], s: 1.3, c: [1, .62, .3], a: .22, ph: Math.random() * 9, candle: zp });
+        lights.push({ kind: "pool", p: [lx * .8, 0, zp], s: 2.2, c: [1, .6, .3], a: .06, ph: Math.random() * 9, candle: zp });
+        points.push({ p: [lx * .85, ly + .1, zp], c: [1, .58, .28], i: .9, k: 1.1, candle: zp });
       });
     }
-    // two tall candle stands before the altar
+
+    // the vault: a pointed barrel, with transverse and diagonal ribs, a ridge rib and gilded bosses
+    var bays = [Z0]; for (var bz = M.firstPier; bz <= ZC + .01; bz += M.bay) bays.push(bz); bays.push(ZE);
+    for (var b = 0; b < bays.length - 1; b++) {
+      var za2 = bays[b], zb2 = bays[b + 1], vm = b === bays.length - 2 ? stars : vault;
+      surf(vm, 24, 2, function (i, j) { var x = -X + 2 * X * i / 24; return [x, vaultY(x), za2 + (zb2 - za2) * j / 2]; }, { ao: function (i) { var e = Math.abs(i - 12) / 12; return .7 + .3 * (1 - e * e); } });
+      (function (za2, zb2) {
+        var dia = function (sgn) { return function (t) { var x = -X + 2 * X * t; return [x, vaultY(x) - .05, sgn > 0 ? za2 + (zb2 - za2) * t : zb2 - (zb2 - za2) * t]; }; };
+        sweep(rib, dia(1), 24, [[-.07, 0], [-.05, -.1], [.05, -.1], [.07, 0]], null);
+        sweep(rib, dia(-1), 24, [[-.07, 0], [-.05, -.1], [.05, -.1], [.07, 0]], null);
+        lathe(gold, 0, apex - .14, (za2 + zb2) / 2, [[0, -.12], [.1, -.08], [.14, 0], [.12, .06], [0, .1]], 12);
+      })(za2, zb2);
+    }
+    bays.forEach(function (z) {
+      sweep(rib, function (t) { var x = -X + 2 * X * t; return [x, vaultY(x) - .06, z]; }, 32, [[-.09, 0], [-.07, -.14], [.07, -.14], [.09, 0]], function () { return [0, 0, 1]; });
+    });
+    sweep(rib, function (t) { return [0, apex - .04, Z0 + (ZE - Z0) * t]; }, 1, [[-.06, 0], [-.05, -.08], [.05, -.08], [.06, 0]], function () { return [1, 0, 0]; });
+
+    // the east wall, with the rose window
+    var RC = [0, 5.85], RR = 1.28;
+    surf(stone, 96, 1, function (i, j) {
+      var a = i / 96 * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      if (!j) return [RC[0] + dx * RR, RC[1] + dy * RR, ZE];
+      var tx = dx ? (dx > 0 ? X - RC[0] : -X - RC[0]) / dx : 1e9, ty = dy ? (dy > 0 ? apex - RC[1] : -RC[1]) / dy : 1e9;
+      var t = Math.min(Math.abs(tx), Math.abs(ty));
+      return [RC[0] + dx * t, Math.min(vaultY(RC[0] + dx * t), RC[1] + dy * t), ZE];
+    }, { ao: function (i, j, p) { return .62 + .38 * Math.min(1, p[1] / 1.6); } });
+    surf(stone, 64, 1, function (i, j) { var a = i / 64 * Math.PI * 2; return [Math.cos(a) * RR, RC[1] + Math.sin(a) * RR, ZE + .4 * j]; }, { wrap: true, ao: function (i, j) { return 1 - .4 * j; } });
+    sweep(rib, function (t) { var a = t * Math.PI * 2; return [Math.cos(a) * (RR + .06), RC[1] + Math.sin(a) * (RR + .06), ZE - .03]; }, 64, ring(.075, 8), function () { return [0, 0, 1]; });
+    panel(rose, [-RR, RC[1] - RR, ZE + .38], [RR, RC[1] - RR, ZE + .38], [RR, RC[1] + RR, ZE + .38], [-RR, RC[1] + RR, ZE + .38]);
+
+    // the altar: marble table with a gilded frontal, a gradine with six candles and the cross
+    box(marble, -1.3, platY, zTable, 1.3, platY + 1.0, zTable + .62, [.7, 1]);
+    panel(mesh("frontal"), [-1.08, platY + .1, zTable - .012], [1.08, platY + .1, zTable - .012], [1.08, platY + .9, zTable - .012], [-1.08, platY + .9, zTable - .012]);
+    box(marble, -1.4, platY + 1.0, zTable - .05, 1.4, platY + 1.08, zTable + .67);
+    box(marble, -1.2, platY + 1.08, zTable + .38, 1.2, platY + 1.22, zTable + .62);
+    var gy = platY + 1.22;
+    [-.95, -.65, -.35, .35, .65, .95].forEach(function (x, q) {
+      var hgt = .34 + (2 - Math.abs(q < 3 ? 2 - q : q - 3)) * .06;
+      lathe(gold, x, gy, zTable + .5, [[0, 0], [.07, 0], [.07, .02], [.03, .05], [.02, hgt * .5], [.035, hgt * .55], [.015, hgt * .6], [.015, hgt - .03], [.04, hgt - .02], [.04, hgt]], 12);
+      lathe(wax, x, gy + hgt, zTable + .5, [[.02, 0], [.02, .22], [0, .23]], 8);
+      lights.push({ kind: "flame", p: [x, gy + hgt + .27, zTable + .48], s: .07, c: [1, .9, .7], a: 1, ph: Math.random() * 9, candle: zTable });
+      lights.push({ kind: "glow", p: [x, gy + hgt + .27, zTable + .47], s: .9, c: [1, .62, .3], a: .25, ph: Math.random() * 9, candle: zTable });
+    });
+    box(gold, -.03, gy, zTable + .48, .03, gy + .92, zTable + .54);
+    box(gold, -.21, gy + .62, zTable + .48, .21, gy + .68, zTable + .54);
+    points.push({ p: [0, gy + .7, zTable - .3], c: [1, .66, .36], i: 1.4, k: .35, candle: zTable });
+
+    // the reredos behind the altar: stone panelling with five starry niches, pinnacles and a gable
+    var zr = ZE - .5;
+    box(stone, -2.2, platY, zr, 2.2, platY + .8, zr + .4, [.7, 1]);
+    box(stone, -2.0, platY + .8, zr + .1, 2.0, 3.85, zr + .4);
+    [-1.5, -.75, 0, .75, 1.5].forEach(function (x, q) {
+      var w = q === 2 ? .62 : .5, h = q === 2 ? 2.4 : 2.0, y0 = platY + 1.0;
+      panel(niche, [x - w / 2, y0, zr + .09], [x + w / 2, y0, zr + .09], [x + w / 2, y0 + h, zr + .09], [x - w / 2, y0 + h, zr + .09]);
+    });
+    [-2.0, -1.125, -.375, .375, 1.125, 2.0].forEach(function (x) {
+      lathe(rib, x, platY + .8, zr + .06, [[.06, 0], [.05, .06], [.045, 2.5], [.07, 2.56], [.07, 2.62]], 10);
+      lathe(stone, x, 3.85, zr + .2, [[.13, 0], [.13, .16], [.1, .2], [.1, .22], [.0, .72]], 8, function (a, j) { return j === 4 ? 1 : 1 + .12 * Math.pow(Math.abs(Math.cos(a * 2)), 4); });
+      lathe(gold, x, 4.57, zr + .2, [[0, 0], [.03, .02], [0, .07]], 6);
+    });
+    surf(stone, 16, 1, function (i, j) { var x = -.8 + 1.6 * i / 16; return [x, j ? 3.85 + .62 * (1 - Math.abs(x) / .8) : 3.85, zr + .12]; });
+    box(gold, -.03, 4.47, zr + .1, .03, 4.55 + .0, zr + .16);
+
+    // two tall candle stands before the steps, where the couple will stand
     [-1, 1].forEach(function (s) {
       var x = s * 1.32, z = M.coupleZ + .9;
-      items.push(Q(tex.white, [x - .02, 0, z], [.04, 0, 0], [0, 1.32, 0], null, grey(.045), { cut: .5, x0: x, x1: x, top: 1.4 }));
-      items.push(Q(tex.white, [x - .13, 0, z], [.26, 0, 0], [0, .06, 0], null, grey(.05), { cut: .5, x0: x, x1: x, top: .1 }));
-      items.push(Q(tex.white, [x - .1, 1.31, z], [.2, 0, 0], [0, .03, 0], null, grey(.07), { cut: .5, x0: x, x1: x, top: 1.35 }));
-      items.push(Q(tex.white, [x - .025, 1.34, z - .01], [.05, 0, 0], [0, .2, 0], null, rgba(.9, .84, .7, 1), { cut: .5, x0: x, x1: x, top: 1.55 }));
-      lights.push({ kind: "flame", p: [x, 1.6, z - .02], s: .09, c: [1, .9, .7], a: 1, ph: Math.random() * 9, candle: z });
-      lights.push({ kind: "glow", p: [x, 1.6, z - .03], s: 2.6, c: [1, .62, .3], a: .3, ph: Math.random() * 9, candle: z });
-      lights.push({ kind: "pool", p: [x * .8, 0, z - .6], s: 3.4, c: [1, .6, .3], a: .12, ph: Math.random() * 9, candle: z });
+      lathe(gold, x, 0, z, [[0, 0], [.18, 0], [.18, .03], [.08, .08], [.04, .2], [.03, 1.1], [.06, 1.2], [.03, 1.28], [.1, 1.3], [.1, 1.33]], 16);
+      lathe(wax, x, 1.33, z, [[.03, 0], [.03, .26], [0, .27]], 8);
+      lights.push({ kind: "flame", p: [x, 1.66, z - .02], s: .09, c: [1, .9, .7], a: 1, ph: Math.random() * 9, candle: z });
+      lights.push({ kind: "glow", p: [x, 1.66, z - .03], s: 2.4, c: [1, .62, .3], a: .3, ph: Math.random() * 9, candle: z });
+      lights.push({ kind: "pool", p: [x * .8, 0, z - .6], s: 3.2, c: [1, .6, .3], a: .1, ph: Math.random() * 9, candle: z });
     });
-    // the sanctuary glows: a broad warm pool before the altar and a halo at the rose window
-    lights.push({ kind: "pool", p: [0, 0, M.altarZ - 1.8], s: 7, c: [1, .7, .4], a: .16, ph: 0, still: true });
-    lights.push({ kind: "glow", p: [0, 4.3, M.altarZ - .1], s: 7.5, c: [1, .66, .36], a: .12, ph: 0, still: true, fog: .01, rose: true });
-    items.sort(function (a, b) { return b.z - a.z; });
-    M.items = items;
+
+    // pews: back, seat, kneeler and carved ends, in two blocks either side of the aisle
+    var endPoly = function (r) {
+      var pts = [[r - .07, 0], [r + .56, 0], [r + .56, .55]];
+      for (var e = 1; e <= 8; e++) { var a = e / 8 * Math.PI / 2; pts.push([r - .07 + .63 * Math.cos(a), .55 + .5 * Math.sin(a)]); }
+      return pts;
+    };
+    for (var r = M.pewFrom; r <= M.pewTo + .01; r += 1) {
+      [-1, 1].forEach(function (s) {
+        var xa = s < 0 ? -M.pewOut : M.pewIn, xb = s < 0 ? -M.pewIn : M.pewOut;
+        box(wood, xa, .12, r, xb, .95, r + .05, [.45, 1]);
+        sweep(wood, function (t) { return [xa + (xb - xa) * t, .965, r + .025]; }, 1, [[-.055, -.03], [-.05, .015], [-.025, .04], [.025, .04], [.05, .015], [.055, -.03]], function () { return [0, 0, 1]; });
+        box(wood, xa, .8, r - .012, xb, .83, r);
+        for (var pn = 0; pn < 3; pn++) {
+          var pw = (xb - xa - .16) / 3, px0 = xa + .08 + pn * pw;
+          box(dark, px0 + .03, .3, r - .008, px0 + pw - .03, .74, r, [.8, 1]);
+        }
+        box(wood, xa, .42, r + .05, xb, .47, r + .5, [.8, .9]);
+        box(wood, xa, .08, r - .36, xb, .17, r - .22, [.4, .55]);
+        [s * M.pewIn, s * M.pewOut].forEach(function (xe, q) {
+          slabX(wood, endPoly(r), xe - .035, xe + .035, .9);
+          if (!q) slabX(wood, endPoly(r).map(function (pt) { return [r + .25 + (pt[0] - r - .25) * .7, .22 + (pt[1] - .22) * .66]; }), xe - s * .05 - .01, xe - s * .05 + .01, .7);
+        });
+      });
+    }
+
+    // bronze chandeliers hanging down the nave, each with two tiers of candles
+    [4.5, 10.5, 16.5, 22.5].forEach(function (zc) {
+      var yc = 5.0;
+      lathe(gold, 0, yc, zc, [[0, -.5], [.05, -.46], [.09, -.36], [.05, -.25], [.13, -.1], [.15, 0], [.09, .07], [.05, .22], [.11, .4], [.075, .55], [.03, .66], [.035, .95], [.025, 1.0]], 16);
+      lathe(gold, 0, yc + 1.0, zc, [[.012, 0], [.012, apex - yc - 1.1]], 6);
+      [[8, .82, 0, -.02], [6, .48, .5, .48]].forEach(function (tier) {
+        var n = tier[0], R = tier[1], y1 = tier[2], yr = yc + tier[3];
+        sweep(gold, function (t) { var a = t * Math.PI * 2; return [Math.cos(a) * R * .96, yr, zc + Math.sin(a) * R * .96]; }, 40, ring(.016, 6), function () { return [0, 1, 0]; });
+        for (var q = 0; q < n; q++) {
+          var a = (q + .5) / n * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+          (function (ca, sa) {
+            // an S-curved arm out from the stem, ending in a cup with a candle
+            sweep(gold, function (t) {
+              var u = 1 - t, r0 = .08, r3 = R, y0 = y1 - .06, y3 = y1 + .06;
+              var rr = u * u * u * r0 + 3 * u * u * t * (R * .35) + 3 * u * t * t * (R * .95) + t * t * t * r3;
+              var yy = yc + u * u * u * y0 + 3 * u * u * t * (y1 - .42) + 3 * u * t * t * (y1 - .32) + t * t * t * y3;
+              return [ca * rr, yy, zc + sa * rr];
+            }, 14, ring(.017, 6), function () { return [-sa, 0, ca]; });
+            var cx = ca * R, cz = zc + sa * R, cy = yc + y1 + .06;
+            lathe(gold, cx, cy, cz, [[.0, 0], [.03, .01], [.065, .05], [.06, .06]], 10);
+            lathe(wax, cx, cy, cz, [[.019, .04], [.019, .2], [0, .21]], 6);
+            lights.push({ kind: "flame", p: [cx, cy + .25, cz], s: .06, c: [1, .9, .7], a: .95, ph: Math.random() * 9, candle: zc });
+            lights.push({ kind: "glow", p: [cx, cy + .25, cz - .01], s: .55, c: [1, .66, .34], a: .3, ph: Math.random() * 9, candle: zc });
+          })(ca, sa);
+        }
+      });
+      lights.push({ kind: "glow", p: [0, yc + .2, zc], s: 3.4, c: [1, .64, .32], a: .12, ph: Math.random() * 9, candle: zc });
+      lights.push({ kind: "pool", p: [0, 0, zc], s: 4.2, c: [1, .66, .36], a: .1, ph: 0, candle: zc });
+      points.push({ p: [0, yc + .1, zc], c: [1, .66, .38], i: 2.6, k: .16, candle: zc });
+    });
+
+    // the sanctuary is the brightest place; the rose window glows into it
+    points.push({ p: [0, 4.2, 25.2], c: [1, .74, .48], i: 2.4, k: .06, still: true });
+    points.push({ p: [0, RC[1], ZE - .6], c: [1, .7, .45], i: 1.2, k: .12, still: true, rose: true });
+
+    // light: daylight beams from the left clerestory and aisle windows, and soft halos at the glass
+    for (var bb = 0; bb < M.piers - 1; bb++) {
+      var zc2 = M.firstPier + bb * M.bay + M.bay / 2, D = [.55, -1, .16], len = 9.2;
+      [-.22, .22].forEach(function (dz, j) {
+        lights.push({ kind: "beam", O: [-X - .2, COURSE + 1.6, zc2 + dz], U: [0, 1.0, 0], V: [D[0] * len, D[1] * len, D[2] * len], c: [1, .8, .5], a: j ? .06 : .08 });
+      });
+      var D2 = [1, -.62, .2], len2 = 6.4;
+      lights.push({ kind: "beam", O: [-M.aisleX, 2.0, zc2], U: [0, 2.4, 0], V: [D2[0] * len2, D2[1] * len2, D2[2] * len2], c: [1, .78, .46], a: .08 });
+      [-1, 1].forEach(function (s) {
+        lights.push({ kind: "glow", p: [s * (X + .1), COURSE + 1.2, zc2], s: 2.2, c: [1, .8, .55], a: .05, still: true, win: true });
+      });
+    }
+    lights.push({ kind: "glow", p: [0, RC[1], ZE - .1], s: 7.5, c: [1, .66, .36], a: .12, ph: 0, still: true, fog: .01, rose: true });
+    lights.push({ kind: "pool", p: [0, platY + .01, 25.6], s: 6, c: [1, .7, .4], a: .1, ph: 0, still: true });
 
     // dust: random points in a box ahead of the camera, wrapped as we walk
     moteData = new Float32Array(NM * 4);
     motes = [];
     for (var m = 0; m < NM; m++) motes.push({ x: (Math.random() * 2 - 1) * 2.4, y: .3 + Math.random() * 6, z: Math.random() * 14, ph: Math.random() * 6.28, sp: .4 + Math.random() * .6 });
+  }
+
+  // the materials: tint, texture, mapping, scale, specular, shininess, emission, metal; drawn near things first
+  var MATS = [
+    ["wood", [1, 1, 1], "wood", 1, 1 / 1.1, .45, 40, 0, 0],
+    ["dark", [.42, .3, .24], "wood", 1, 1 / 1.1, .1, 20, 0, 0],
+    ["gold", [.86, .6, .3], "white", 0, 1, 1.3, 30, .02, 1],
+    ["wax", [1, .94, .82], "white", 0, 1, .2, 10, .25, 0],
+    ["lamp", [1, .8, .52], "white", 0, 1, 0, 1, .55, 0, "lamp"],
+    ["stone", [1, 1, 1], "stone", 1, .5, .06, 14, 0, 0],
+    ["rib", [.97, .9, .76], "stone", 1, .5, .1, 18, 0, 0],
+    ["marble", [1.05, 1.02, 1], "marble", 1, 1 / 2.4, .5, 60, 0, 0],
+    ["niche", [1, 1, 1], "niche", 2, 1, .2, 20, .25, 0],
+    ["frontal", [1, 1, 1], "frontal", 2, 1, .15, 16, .05, 0],
+    ["carpet", [.6, .55, .55], "carpet", 2, 1, .05, 6, 0, 0],
+    ["floor", [.95, .95, .95], "marble", 3, 1 / 2.4, .55, 80, 0, 0],
+    ["vault", [1.04, 1, .95], "stone", 1, .5, .02, 8, 0, 0],
+    ["stars", [1, 1, 1], "stars", 1, .45, .3, 20, .1, 0],
+    ["glassC", [1, 1, 1], "glassC", 2, 1, 0, 1, .95, 0, "win"],
+    ["glassA", [1, 1, 1], "glassA", 2, 1, 0, 1, .8, 0, "win"],
+    ["glassH", [1, 1, 1], "glassH", 2, 1, 0, 1, 1.0, 0, "win"],
+    ["rose", [1, 1, 1], "rose", 2, 1, 0, 1, 1.1, 0, "rose"],
+  ];
+  function upload() {
+    MATS.forEach(function (mt) {
+      var m = G[mt[0]];
+      if (!m) return;
+      m.flush();
+      m.chunks.forEach(function (c) {
+        var vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, c.v, gl.STATIC_DRAW);
+        var ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, c.i, gl.STATIC_DRAW);
+        draws.push({ mt: mt, vb: vb, ib: ib, n: c.i.length });
+      });
+      m.chunks = null;
+    });
   }
 
   /* ------------------------------------------------------------- render */
@@ -249,63 +834,94 @@
   }
   var boundTex = null;
   function bind(t) { if (boundTex !== t) { gl.bindTexture(gl.TEXTURE_2D, t.t); boundTex = t; } }
-  function visible(o, cam) {
-    var dz = o.z - cam;
-    if (dz < .12) return false;
-    if (o.x0 == null || Math.abs(P.yaw) > .005) return true;
-    var s = k / dz, halfW = W / 2 / dpr;
-    var a = o.x0 * s, b = o.x1 * s;
-    if (Math.min(a, b) > halfW + 40 || Math.max(a, b) < -halfW - 40) return false;
-    return true;
-  }
   function flicker(l, t) {
     if (l.still) return 1;
     return 1 + .07 * Math.sin(t * 9.1 + l.ph) + .05 * Math.sin(t * 15.7 + l.ph * 2) + .04 * Math.sin(t * 27.3 + l.ph * 3);
   }
+  function litBy(l, reach) {
+    if (l.candle != null) return Math.min(1, Math.max(0, (reach - l.candle) / 1.6));
+    return P.win * P.expo;
+  }
+  var LP = new Float32Array(32), LC = new Float32Array(24);
 
   function render(time) {
     var cam = P.camZ, cw = W / dpr, ch = H / dpr, yc = Math.cos(P.yaw), ys = Math.sin(P.yaw);
-    var win = .3 + .7 * P.win;
+    var tsec = time / 1000, reach = P.ignite * (M.altarZ + 2), win = P.win;
     gl.viewport(0, 0, W, H);
     gl.clearColor(.022, .016, .013, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    var proj = [2 * k / cw, 2 * k / ch, 0, 1 - 2 * hz / ch];
+    gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
+    gl.disable(gl.BLEND);
+
+    /* the building */
+    gl.useProgram(progB);
+    gl.uniform3f(UB.Cam, 0, M.eye, cam); gl.uniform4fv(UB.Proj, proj); gl.uniform2f(UB.Yaw, yc, ys);
+    gl.uniform3f(UB.Eye, 0, M.eye, cam);
+    // the eight lights that matter most from here: candles light down the aisle as the church wakes
+    var ahead = cam + 5, pick = [];
+    points.forEach(function (l) {
+      var lit = l.candle != null ? Math.min(1, Math.max(0, (reach - l.candle) / 1.6)) : win;
+      if (l.rose) lit = win * (1 + P.bloom * 3);
+      if (lit <= 0) return;
+      var dz = l.p[2] - ahead, dd = l.p[0] * l.p[0] + dz * dz;
+      pick.push({ l: l, w: l.i * lit * (l.still ? 1 : flicker({ ph: l.p[2] }, tsec)), s: l.i * lit / (1 + dd * l.k * .5) });
+    });
+    pick.sort(function (a, b) { return b.s - a.s; });
+    for (var q = 0; q < 8; q++) {
+      var e = pick[q];
+      LP[q * 4] = e ? e.l.p[0] : 0; LP[q * 4 + 1] = e ? e.l.p[1] : 0; LP[q * 4 + 2] = e ? e.l.p[2] : 0; LP[q * 4 + 3] = e ? e.l.k : 1;
+      LC[q * 3] = e ? e.l.c[0] * e.w : 0; LC[q * 3 + 1] = e ? e.l.c[1] * e.w : 0; LC[q * 3 + 2] = e ? e.l.c[2] * e.w : 0;
+    }
+    gl.uniform4fv(UB.LP, LP); gl.uniform3fv(UB.LC, LC);
+    var amb = .035 + .085 * win;
+    gl.uniform3f(UB.Amb, amb * 1.0, amb * .84, amb * .64);
+    gl.uniform3f(UB.SunD, .48, .74, .2);
+    gl.uniform3f(UB.SunC, .1 * win, .075 * win, .05 * win);
+    gl.uniform3f(UB.Haze, .07, .05, .036);
+    gl.uniform1f(UB.Fog, .022);
+    gl.uniform1f(UB.Expo, P.expo);
+    gl.enableVertexAttribArray(UB.aP); gl.enableVertexAttribArray(UB.aN); gl.enableVertexAttribArray(UB.aU); gl.enableVertexAttribArray(UB.aA);
+    var curMat = null;
+    boundTex = null;
+    for (var i = 0; i < draws.length; i++) {
+      var dr = draws[i], mt = dr.mt;
+      if (curMat !== mt) {
+        curMat = mt;
+        bind(tex[mt[2]]);
+        gl.uniform4f(UB.Alb, mt[1][0], mt[1][1], mt[1][2], mt[3]);
+        var em = mt[7];
+        if (mt[9] === "win") em *= .12 + .88 * win;
+        else if (mt[9] === "rose") em *= (.12 + .88 * win) * (1 + P.bloom * 2.5);
+        else if (mt[9] === "lamp") em *= Math.min(1, P.ignite * 1.5);
+        gl.uniform4f(UB.Mat, mt[4], mt[5], mt[6], em);
+        gl.uniform1f(UB.Metal, mt[8]);
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, dr.vb);
+      gl.vertexAttribPointer(UB.aP, 3, gl.FLOAT, false, 36, 0);
+      gl.vertexAttribPointer(UB.aN, 3, gl.FLOAT, false, 36, 12);
+      gl.vertexAttribPointer(UB.aU, 2, gl.FLOAT, false, 36, 24);
+      gl.vertexAttribPointer(UB.aA, 1, gl.FLOAT, false, 36, 32);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, dr.ib);
+      gl.drawElements(gl.TRIANGLES, dr.n, gl.UNSIGNED_SHORT, 0);
+    }
+    gl.disableVertexAttribArray(UB.aN); gl.disableVertexAttribArray(UB.aU); gl.disableVertexAttribArray(UB.aA);
+
+    /* light: additive, depth-tested so piers and pews occlude it */
     gl.useProgram(prog);
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.enableVertexAttribArray(U.aQ);
     gl.vertexAttribPointer(U.aQ, 2, gl.FLOAT, false, 0, 0);
-    var proj = [2 * k / cw, 2 * k / ch, 0, 1 - 2 * hz / ch];
     gl.uniform3f(U.Cam, 0, M.eye, cam);
     gl.uniform4fv(U.Proj, proj);
     gl.uniform2f(U.Yaw, yc, ys);
-    gl.uniform1f(U.Expo, P.expo);
-    gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
-    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    boundTex = null;
-
-    // planes: floor, carpet, walls, altar
-    for (var i = 0; i < 2; i++) { bind(solids[i].t); setQuad(solids[i], solids[i].tint, solids[i].fog, solids[i].cut); }
-    for (i = 2; i < solids.length; i++) {
-      var sq = solids[i], tint = sq.t === tex.altar ? [win, win, win, 1] : sq.tint;   // the windows wake last
-      bind(sq.t); setQuad(sq, tint, sq.fog, sq.cut);
-    }
-    // depth-sorted billboards, far to near
-    var items = M.items;
-    for (i = 0; i < items.length; i++) {
-      var o = items[i];
-      if (!visible(o, cam)) continue;
-      bind(o.t); setQuad(o, o.tint, o.fog, o.cut);
-    }
-
-    // light: additive, depth-tested so piers and pews occlude it
+    gl.uniform1f(U.Expo, 1);
+    gl.enable(gl.BLEND);
     gl.depthMask(false);
     gl.blendFunc(gl.ONE, gl.ONE);
-    gl.uniform1f(U.Expo, 1);
-    var tsec = time / 1000, reach = P.ignite * (M.altarZ + 2);
+    boundTex = null;
     for (i = 0; i < lights.length; i++) {
-      var l = lights[i], f = flicker(l, tsec), lit;
-      // candles light one by one down the aisle; daylight comes with the windows
-      if (l.candle != null) lit = Math.min(1, Math.max(0, (reach - l.candle) / 1.6));
-      else lit = P.win * P.expo;
+      var l = lights[i], f = flicker(l, tsec), lit = litBy(l, reach);
       if (lit <= 0) continue;
       var a = l.a * f * lit;
       if (l.rose) a += P.bloom * 1.6;
@@ -320,7 +936,7 @@
       if (p[2] - cam < .15) continue;
       if (l.kind === "pool") {
         bind(tex.glow);
-        setQuad({ O: [p[0] - s / 2, .01, p[2] - s / 2], U: [s, 0, 0], V: [0, 0, s], uv: [0, 0, 1, 1] }, col, .04, 0);
+        setQuad({ O: [p[0] - s / 2, p[1] || .01, p[2] - s / 2], U: [s, 0, 0], V: [0, 0, s], uv: [0, 0, 1, 1] }, col, .04, 0);
       } else {
         bind(l.kind === "flame" ? tex.flame : tex.glow);
         var sw = l.kind === "flame" ? s * .55 : s;
@@ -333,11 +949,10 @@
     gl.uniform2f(UP.Yaw, yc, ys); gl.uniform1f(UP.Expo, P.expo * (.4 + .6 * P.win));
     for (i = 0; i < NM; i++) {
       var m = motes[i];
-      var zz;
-      zz = cam + .6 + (((m.z - cam) % 14) + 14) % 14;
+      var zz = cam + .6 + (((m.z - cam) % 14) + 14) % 14;
       var yy = m.y + Math.sin(tsec * .23 * m.sp + m.ph) * .25, xx = m.x + Math.sin(tsec * .17 * m.sp + m.ph * 2) * .3;
       // brighter inside the clerestory beams (x grows as y falls)
-      var bx = -M.wallX + .55 * (7.95 + .65 - yy);
+      var bx = -M.wallX + .55 * (COURSE + 1.6 - yy);
       var inBeam = Math.exp(-Math.pow((xx - bx) / .7, 2));
       moteData[i * 4] = xx; moteData[i * 4 + 1] = yy; moteData[i * 4 + 2] = zz;
       moteData[i * 4 + 3] = (.22 + .9 * inBeam) * (.6 + .4 * Math.sin(tsec * 1.3 * m.sp + m.ph));
@@ -356,7 +971,7 @@
     var cw = host.clientWidth, ch = host.clientHeight;
     CW = cw;
     var want = Math.min(window.devicePixelRatio || 1, opts.maxDpr || 1.5);
-    if (slowFrames > 2) want = Math.min(want, 1.1); else if (slowFrames > 0) want = Math.min(want, 1.3);
+    if (slowFrames > 2) want = Math.min(want, 1); else if (slowFrames > 1) want = Math.min(want, 1.15); else if (slowFrames > 0) want = Math.min(want, 1.3);
     dpr = want;
     W = Math.round(cw * dpr); H = Math.round(ch * dpr);
     if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
@@ -365,7 +980,6 @@
     hz = ch * (cw < ch ? .375 : .42);
     dirty = true;
   }
-  function viewSize() { return { w: host.clientWidth, h: host.clientHeight }; }
 
   // where a world point appears on screen (CSS px), for anchoring page elements
   function project(x, y, z) {
@@ -387,7 +1001,7 @@
     // if the device struggles while moving, render fewer pixels
     if (moving && lastDraw) {
       acc += now - lastDraw; accN++;
-      if (accN > 45) { if (acc / accN > 24 && slowFrames < 3) { slowFrames++; resize(); } acc = 0; accN = 0; }
+      if (accN > 45) { if (acc / accN > 24 && slowFrames < 4) { slowFrames++; resize(); } acc = 0; accN = 0; }
     }
     lastDraw = now;
     dirty = false;
@@ -414,10 +1028,13 @@
     }
     host.insertBefore(canvas, host.firstChild);
     try {
-      prog = compile(VS, FS); progP = compile(VS_P, FS_P);
+      prog = compile(VS, FS); progB = compile(VS_B, FS_B); progP = compile(VS_P, FS_P);
     } catch (e) { host.classList.add("nave--still"); canvas.remove(); return false; }
-    ["aQ"].forEach(function (n) { U[n] = gl.getAttribLocation(prog, n); });
+    U.aQ = gl.getAttribLocation(prog, "aQ");
     ["O", "U", "V", "Cam", "UV", "Proj", "Tint", "Fog", "Cut", "T", "Yaw", "Expo"].forEach(function (n) { U[n] = gl.getUniformLocation(prog, "u" + n); });
+    ["aP", "aN", "aU", "aA"].forEach(function (n) { UB[n] = gl.getAttribLocation(progB, n); });
+    ["Cam", "Proj", "Yaw", "T", "Alb", "Mat", "Metal", "Eye", "Amb", "SunD", "SunC", "Haze", "Expo", "Fog"].forEach(function (n) { UB[n] = gl.getUniformLocation(progB, "u" + n); });
+    UB.LP = gl.getUniformLocation(progB, "uLP[0]"); UB.LC = gl.getUniformLocation(progB, "uLC[0]");
     UP.aP = gl.getAttribLocation(progP, "aP");
     ["Cam", "Proj", "Px", "Yaw", "Expo"].forEach(function (n) { UP[n] = gl.getUniformLocation(progP, "u" + n); });
     aniso = gl.getExtension("EXT_texture_filter_anisotropic") || gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
@@ -426,20 +1043,28 @@
     moteBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, moteBuf);
     gl.bufferData(gl.ARRAY_BUFFER, NM * 16, gl.DYNAMIC_DRAW);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    var A = opts.art || {}, base = "assets/images/nave/";
-    tex.floor = texture(A.floor || base + "floor.webp", true);
-    tex.carpet = texture(A.carpet || base + "carpet.webp", true);
-    tex.wall = texture(A.wall || base + "wall.webp", true);
-    tex.aisle = texture(A.aisle || base + "aisle.webp", true);
-    tex.pier = texture(A.pier || base + "pier.webp");
-    tex.arch = texture(A.arch || base + "arch.webp");
-    tex.pew = texture(A.pew || base + "pew.webp", true);
-    tex.pewend = texture(A.pewend || base + "pewend.webp");
-    tex.altar = texture(A.altar || base + "altar.webp");
-    makeSprites();
-    build();
     resize();
-    ready = true;
+    // paint the textures and build the church in small steps (none long
+    // enough to stutter the opening animation); it shows once all are done
+    var rise = function (w) { return pointed(0, w, 0, 1.6)(w / 2); };
+    var steps = [
+      makeSprites,
+      function () { tex.stone = texture(stoneTex(), true); },
+      function () { tex.marble = texture(marbleTex(), true); },
+      function () { tex.wood = texture(woodTex(), true); tex.carpet = texture(carpetTex(), true); },
+      function () { tex.stars = texture(starTex(), true); tex.niche = texture(nicheTex()); tex.frontal = texture(frontalTex()); },
+      function () { tex.rose = texture(roseTex()); },
+      function () { tex.glassC = texture(lancetTex(.92, 1.25 + rise(.92), 1.25)); },
+      function () { tex.glassA = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7)); },
+      function () { tex.glassH = texture(lancetTex(1.0, 3.8 + rise(1.0), 3.8)); },
+      build,
+      function () { upload(); ready = true; dirty = true; },
+    ];
+    (function next() {
+      if (!gl || gl.isContextLost()) return;
+      steps.shift()();
+      if (steps.length) setTimeout(next, 0);
+    })();
     var lastW = host.clientWidth, lastH = host.clientHeight;
     window.addEventListener("resize", function () {
       // ignore the small height changes of mobile browser bars

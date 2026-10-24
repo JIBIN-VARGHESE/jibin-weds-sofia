@@ -115,22 +115,13 @@ window.WEDDING = {
   },
 
   /* --------------------------------------------------------------- ARTWORK */
-  // The church interior behind the whole page is drawn in 3D by
-  // assets/js/nave.js from these textures (all in assets/images/nave/).
-  // Replace a file to change a surface; keep the pixel size (powers of two).
+  // The church behind the whole page is built and painted in code by
+  // assets/js/nave.js (no pictures to download). Devices without a graphics
+  // chip see a still picture of it: assets/images/nave/still-*.webp.
   art: {
-    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024c",   // opening picture on phones
-    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024c",  // opening picture on wide screens
-    floor:  "assets/images/nave/floor.webp",    // polished stone tiles (repeats)
-    carpet: "assets/images/nave/carpet.webp",   // aisle runner (repeats)
-    wall:   "assets/images/nave/wall.webp",     // nave wall: arcade, triforium, clerestory (one bay, repeats)
-    aisle:  "assets/images/nave/aisle.webp",    // side-aisle wall with a stained-glass window (one bay)
-    pier:   "assets/images/nave/pier.webp",     // clustered stone column
-    arch:   "assets/images/nave/arch.webp",     // pointed arch across the nave
-    pew:    "assets/images/nave/pew.webp",      // pew back
-    pewend: "assets/images/nave/pewend.webp",   // carved pew end
-    altar:  "assets/images/nave/altar.webp",    // far wall: rose window, altar, candles
-    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024c", // the couple at the end; fades in over the church
+    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024d",   // opening picture on phones
+    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024d",  // opening picture on wide screens
+    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024d", // the couple at the end; fades in over the church
     // The opening picture is the top of the couple's collage, fading into the
     // dark where the names sit (the bottom panels are left out). Both photos
     // must be ones you own or have permission to use.
