@@ -21,7 +21,7 @@ window.WEDDING = {
     groom: "Jibin",
     brideFull: "Sofia John",        // full names: invitation card
     groomFull: "Jibin Varghese",
-    // Parents, under each name on the invitation card ("" to leave out).
+    // Parents, under each name on the invitation card as "D/o …" and "S/o …" ("" to leave out).
     brideParents: "Mr. Saji & Mrs. Mini",
     groomParents: "Mr. Varghese K. V. & Mrs. Aswathy Varghese",
     // Small monogram letters shown in the corner and on the opening curtain.
@@ -43,11 +43,11 @@ window.WEDDING = {
 
   /* ----------------------------------------------------------- BIBLE VERSE */
   // Shown under the rose window. (The closing uses Mark 10:9.)
-  // Other options: "Love is patient, love is kind." (1 Corinthians 13:4)
-  //                "Two are better than one." (Ecclesiastes 4:9)
+  // Other options: "Love never fails." (1 Corinthians 13:8)
+  //                "Above all, love each other deeply." (1 Peter 4:8)
   verse: {
-    text: "A cord of three strands is not quickly broken.",
-    reference: "Ecclesiastes 4:12",
+    text: "Love is patient, love is kind. Love never fails.",
+    reference: "1 Corinthians 13:4, 8",
   },
 
   /* ------------------------------------------------------------- ENGAGEMENT */
@@ -119,9 +119,9 @@ window.WEDDING = {
   // assets/js/nave.js (no pictures to download). Devices without a graphics
   // chip see a still picture of it: assets/images/nave/still-*.webp.
   art: {
-    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024f",   // opening picture on phones
-    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024f",  // opening picture on wide screens
-    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024f", // the couple at the end; fades in over the church
+    heroPortrait:  "assets/images/hero/hero-portrait.webp?v=20261024h",   // opening picture on phones
+    heroLandscape: "assets/images/hero/hero-landscape.webp?v=20261024h",  // opening picture on wide screens
+    closingPhoto: "assets/images/closing/couple-arches.webp?v=20261024h", // the couple at the end; fades in over the church
     // The opening picture is the top of the couple's collage, fading into the
     // dark where the names sit (the bottom panels are left out). Both photos
     // must be ones you own or have permission to use.

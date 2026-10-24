@@ -34,15 +34,15 @@
   <link rel="preload" href="assets/fonts/jost-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
   <!-- ?v=… makes every browser fetch fresh files after an update (phones can keep
        old copies for days). Change the number on every update, here and in config.js. -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261024f">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261024h">
 
   <!-- the journey layout from the very first paint (main.js falls back to the still page if it can't run) -->
   <script>(function (r) { r.classList.replace('no-js', 'js'); if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) r.classList.add('journey'); })(document.documentElement);</script>
-  <script src="config.js?v=20261024f" defer></script>
-  <script src="assets/js/rsvp.js?v=20261024f" defer></script>
-  <script src="assets/js/nave.js?v=20261024f" defer></script>
-  <script src="assets/js/journey.js?v=20261024f" defer></script>
-  <script src="assets/js/main.js?v=20261024f" defer></script>
+  <script src="config.js?v=20261024h" defer></script>
+  <script src="assets/js/rsvp.js?v=20261024h" defer></script>
+  <script src="assets/js/nave.js?v=20261024h" defer></script>
+  <script src="assets/js/journey.js?v=20261024h" defer></script>
+  <script src="assets/js/main.js?v=20261024h" defer></script>
 </head>
 <body>
 
@@ -64,6 +64,10 @@
 
 
 
+
+    <!-- small line icons: a map pin and a calendar -->
+    <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.3"/></g></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></g></symbol>
 
     <!-- Ornate cross (original): trefoil terminals, inner line, centre medallion, scrollwork -->
     <symbol id="ornate-cross" viewBox="0 0 120 184">
@@ -119,8 +123,8 @@
   <div class="hero__film layer" aria-hidden="true">
     <picture>
       <!-- small landscape screens (a phone on its side); desktops use the portrait photo in a left-hand panel -->
-      <source media="(min-aspect-ratio: 1/1) and (max-width: 899px), (min-aspect-ratio: 1/1) and (max-height: 559px)" srcset="assets/images/hero/hero-landscape.webp?v=20261024f" data-art-srcset="heroLandscape">
-      <img class="hero__photo" src="assets/images/hero/hero-portrait.webp?v=20261024f" srcset="assets/images/hero/hero-portrait-720.webp?v=20261024f 720w, assets/images/hero/hero-portrait-1080.webp?v=20261024f 1080w, assets/images/hero/hero-portrait.webp?v=20261024f 1290w" sizes="(min-aspect-ratio: 1/1) and (min-width: 900px) and (min-height: 560px) 55vw, 100vw" data-art="heroPortrait" alt="" fetchpriority="high">
+      <source media="(min-aspect-ratio: 1/1) and (max-width: 899px), (min-aspect-ratio: 1/1) and (max-height: 559px)" srcset="assets/images/hero/hero-landscape.webp?v=20261024h" data-art-srcset="heroLandscape">
+      <img class="hero__photo" src="assets/images/hero/hero-portrait.webp?v=20261024h" srcset="assets/images/hero/hero-portrait-720.webp?v=20261024h 720w, assets/images/hero/hero-portrait-1080.webp?v=20261024h 1080w, assets/images/hero/hero-portrait.webp?v=20261024h 1290w" sizes="(min-aspect-ratio: 1/1) and (min-width: 900px) and (min-height: 560px) 55vw, 100vw" data-art="heroPortrait" alt="" fetchpriority="high">
     </picture>
   </div>
   <div class="hero__shade layer" aria-hidden="true"></div>
@@ -302,6 +306,25 @@
       <p class="finale__quote" data-bind="closing.signoff"></p>
       <p class="finale__ref" data-bind="closing.signoffRef"></p>
       <canvas class="finale__candle" aria-hidden="true"></canvas>
+      <!-- the day at a glance, to keep: where, when, and straight to maps or a calendar -->
+      <div class="finale__plan" aria-label="The wedding day">
+        <div class="plan">
+          <p class="plan__what">Holy Matrimony <span data-bind="ceremonyTime"></span></p>
+          <p class="plan__where" data-bind="churchName"></p>
+          <div class="plan__acts">
+            <a class="plan__btn" data-href-bind="wedding.churchMapsUrl" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#i-pin"/></svg>Map</a>
+            <button class="plan__btn" type="button" data-cal="ceremony"><svg aria-hidden="true"><use href="#i-cal"/></svg>Calendar</button>
+          </div>
+        </div>
+        <div class="plan">
+          <p class="plan__what">Reception <span data-bind="receptionTime"></span></p>
+          <p class="plan__where" data-bind="receptionVenue"></p>
+          <div class="plan__acts">
+            <a class="plan__btn" data-href-bind="receptionMapsUrl" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#i-pin"/></svg>Map</a>
+            <button class="plan__btn" type="button" data-cal="reception"><svg aria-hidden="true"><use href="#i-cal"/></svg>Calendar</button>
+          </div>
+        </div>
+      </div>
       <button class="btn finale__share" type="button" hidden><span>Share the invitation</span></button>
     </div>
   </section>

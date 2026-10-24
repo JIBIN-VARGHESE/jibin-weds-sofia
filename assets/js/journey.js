@@ -124,6 +124,7 @@
   function openInvite() {
     if (!gate || !readyAt) return;
     gate = false; introGo = true;
+    if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {}   // a soft tap as the seal breaks (Android)
     if (el.gate) { el.gate.classList.add("is-open"); el.gate.blur(); }
     doc.dispatchEvent(new CustomEvent("invite:open"));
   }
@@ -215,7 +216,7 @@
       names: doc.querySelector(".finale__names"), full: doc.querySelector(".finale__full"),
       date: doc.querySelector(".finale__date"), quote: doc.querySelector(".finale__quote"),
       ref: doc.querySelector(".finale__ref"), candle: doc.querySelector(".finale__candle"),
-      share: doc.querySelector(".finale__share"),
+      share: doc.querySelector(".finale__share"), plan: doc.querySelector(".finale__plan"),
     };
     STATIONS.forEach(function (st) {
       var node = doc.getElementById(st.id);
@@ -368,6 +369,7 @@
       setStyle(el.fin.date, "fd", "opacity", ss(18.05, 18.4, s).toFixed(3));
       setStyle(el.fin.quote, "fq", "opacity", ss(18.45, 18.9, s).toFixed(3));
       setStyle(el.fin.ref, "fr", "opacity", ss(18.7, 19.0, s).toFixed(3));
+      if (el.fin.plan) setStyle(el.fin.plan, "fp", "opacity", ss(18.85, 19.25, s).toFixed(3));
       if (el.fin.share) setStyle(el.fin.share, "fs", "opacity", ss(19.0, 19.4, s).toFixed(3));
       if (dust) dust.draw(now, ss(16.8, 17.6, s), ss(19.05, 19.5, s));
     }

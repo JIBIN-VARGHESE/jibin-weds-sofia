@@ -58,7 +58,7 @@ Keep the stations and the camera points in step.
 | Layer | File | Notes |
 |---|---|---|
 | Opening picture | `assets/images/hero/hero-portrait.webp`, `hero-landscape.webp` | the top of your collage, fading into the dark where the names sit; on wide screens it stands over a blurred copy of itself |
-| The church | `assets/js/nave.js` | real 3D, built and painted in code on load: fluted columns with leafy capitals, pointed arcades, a rib vault (starry over the sanctuary), stained-glass lancets and a rose window, panelled pews, four bronze chandeliers, lanterns, marble steps, the altar with its crimson frontal and candles, a reredos with starry niches. Nothing to download |
+| The church | `assets/js/nave.js` | real 3D, built and painted in code on load: fluted columns with leafy capitals, pointed arcades, a rib vault (starry over the sanctuary), stained-glass lancets with saints (halo, robe and cloak, holding a cross, a lily or a book; three designs alternating) and a rose window, panelled pews, four bronze chandeliers, lanterns, marble steps, the altar with its crimson frontal and candles, a reredos with starry niches. Nothing to download |
 | Still church (no graphics chip, or "reduce motion") | `assets/images/nave/still-portrait.webp`, `still-landscape.webp` | renders of the same church |
 | The couple (finale) | `assets/images/closing/couple-arches.webp` | your AI-generated photo |
 

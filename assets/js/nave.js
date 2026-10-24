@@ -55,6 +55,7 @@
     "uniform vec4 uLP[8]; uniform vec3 uLC[8];",
     "uniform float uExpo, uFog;",
     "uniform vec2 uGrade;  // x: saturation, y: brightness",
+    "uniform float uK;     // focal length in device pixels (how big a metre looks at 1 m)",
     "varying vec3 vP, vN; varying vec2 vU; varying float vA;",
     "void main(){",
     "  vec3 n = normalize(vN);",
@@ -62,8 +63,18 @@
     "  if (dot(n, V) < 0.) n = -n;",
     "  vec4 tx = vec4(1.);",
     "  float ao = vA;",
-    // contact shadows on the floor: under the pews, around the piers, along the aisle walls
-    "  if (uAlb.a > 2.5) {",
+    // column shafts: the 24 flutes are drawn by the light, not modelled, and fade
+    // out where they would be thinner than a few pixels (no shimmer in the distance)
+    "  if (uAlb.a > 3.5) {",
+    "    vec2 r = vP.xz - vec2(sign(vP.x) * 2.6, floor(vP.z / 3. + .5) * 3.);",
+    "    float ang = atan(r.y, r.x), c = cos(ang * 24.);",
+    "    float amt = smoothstep(2.5, 6.5, .0785 * uK / d) * smoothstep(.7, .8, vP.y) * (1. - smoothstep(4.12, 4.2, vP.y));",
+    "    float g = pow(max(c, 0.), .7);",
+    "    ao *= 1. - .28 * mix(.3, g, amt) * smoothstep(.7, .8, vP.y) * (1. - smoothstep(4.12, 4.2, vP.y));",
+    "    n = normalize(n + vec3(-sin(ang), 0., cos(ang)) * (-sin(ang * 24.) * step(0., c) * .55 * amt));",
+    "    vec3 a = abs(n);",
+    "    tx = texture2D(uT, ((a.x > a.z) ? vP.zy : vP.xy) * uMat.x);",
+    "  } else if (uAlb.a > 2.5) {",
     "    tx = texture2D(uT, vP.xz * uMat.x);",
     "    float ax = abs(vP.x);",
     "    ao *= 1. - .6 * smoothstep(.62, .9, ax) * (1. - smoothstep(2.1, 2.35, ax)) * smoothstep(1.2, 1.55, vP.z) * (1. - smoothstep(20.3, 20.6, vP.z));",
@@ -293,10 +304,10 @@
   var JEWELS = [[150, 28, 30], [30, 52, 132], [30, 100, 64], [200, 146, 56], [100, 34, 90], [170, 72, 34], [44, 96, 140]];
   function glassNoise(L, u, v) { return .78 + .3 * vn(L, u, v); }
   // a lancet window (pointed top), w × h metres, springing at s metres; canvas top = window top
-  function lancetTex(wm, hm, sm) {
+  function lancetTex(wm, hm, sm, variant, W, H) {
     var n = lattice(16), cells = lattice(64);
     var R = wm * .8, hw = wm / 2;
-    return canvas2(128, 512, function (d, w, h) {
+    var c = canvas2(W, H, function (d, w, h) {
       for (var py = 0; py < h; py++) for (var px = 0; px < w; px++) {
         var x = (px + .5) / w * wm, y = (1 - (py + .5) / h) * hm, o = (py * w + px) * 4;
         var inside = y <= sm || (Math.hypot(x - R, y - sm) <= R && Math.hypot(x - (wm - R), y - sm) <= R);
@@ -307,17 +318,12 @@
           col = Math.floor(y / .14) % 2 ? JEWELS[3] : JEWELS[0];
           if (Math.abs(bx - .07) < .012 || (y < .07 && Math.abs(y - .07) < .012)) lead = true;
           if (bx < .07 && Math.abs((y % .14) - .07) > .062) lead = true;
-        } else {
-          // medallions down the middle, quarries around them
-          var mc = [hm * .3, hm * .62], inMed = -1;
-          for (var m = 0; m < mc.length; m++) { var r = Math.hypot(x - hw, y - mc[m]); if (r < hw * .5) { inMed = m; if (Math.abs(r - hw * .5) < .014 || Math.abs(r - hw * .22) < .012) lead = true; col = r < hw * .22 ? JEWELS[3] : JEWELS[m % 2 ? 1 : 0]; if (r >= hw * .22) { var a = Math.atan2(y - mc[m], x - hw); if (Math.abs(Math.sin(a * 4)) < .1) lead = true; } } }
-          if (inMed < 0) {
-            var qa = (x / .16 + y / .22), qb = (x / .16 - y / .22);
-            var ia = Math.floor(qa), ib = Math.floor(qb);
-            if (Math.abs(qa - Math.round(qa)) < .07 || Math.abs(qb - Math.round(qb)) < .07) lead = true;
-            var pick = Math.floor(vn(cells, ((ia * 7 + 64) % 64) / 64, ((ib * 13 + 64) % 64) / 64) * 7) % 7;
-            col = pick < 5 ? [[214, 186, 132], [196, 176, 140], [222, 200, 150]][pick % 3] : JEWELS[pick];   // mostly warm pale glass, some jewels
-          }
+        } else {                                                     // pale quarries, a few jewels
+          var qa = (x / .16 + y / .22), qb = (x / .16 - y / .22);
+          var ia = Math.floor(qa), ib = Math.floor(qb);
+          if (Math.abs(qa - Math.round(qa)) < .07 || Math.abs(qb - Math.round(qb)) < .07) lead = true;
+          var pick = Math.floor(vn(cells, ((ia * 7 + 64) % 64) / 64, ((ib * 13 + 64) % 64) / 64) * 7) % 7;
+          col = pick < 5 ? [[214, 186, 132], [196, 176, 140], [222, 200, 150]][pick % 3] : JEWELS[pick];
         }
         if (Math.abs(bx - hw) > hw - .015 && y > sm) lead = true;
         var f = glassNoise(n, u, v * 2);
@@ -325,6 +331,67 @@
         else put(d, o, col[0] * f, col[1] * f, col[2] * f);
       }
     });
+    saint(c, wm, hm, sm, variant);
+    return c;
+  }
+  // a saint in the glass: halo, robe and mantle, holding a cross, a lily or a
+  // book, on a deep-blue niche; drawn in metres so it never stretches
+  function saint(c, wm, hm, sm, variant) {
+    var x = c.getContext("2d"), W = c.width, H = c.height;
+    x.save();
+    x.globalCompositeOperation = "source-atop";
+    x.scale(W / wm, H / hm);
+    var cx = wm / 2, y0 = hm - sm + .06, f = Math.min(hm - y0 - .2, wm * 2.5), bw = Math.min(.19 * f, wm / 2 - .13);
+    var LEAD = "#18110c", lw = .016;
+    var ROBE = [["#981c24", "#24408f"], ["#24408f", "#981c24"], ["#1f6a46", "#c99436"]][variant % 3];
+    function shape(fill, draw) { x.beginPath(); draw(); x.fillStyle = fill; x.fill(); x.lineWidth = lw; x.strokeStyle = LEAD; x.stroke(); }
+    // the niche behind the figure
+    shape("#1f2c66", function () { x.moveTo(cx - bw - .05, y0 + .98 * f); x.lineTo(cx - bw - .05, y0 + .2 * f); x.quadraticCurveTo(cx - bw - .05, y0 - .04 * f, cx, y0 - .06 * f); x.quadraticCurveTo(cx + bw + .05, y0 - .04 * f, cx + bw + .05, y0 + .2 * f); x.lineTo(cx + bw + .05, y0 + .98 * f); x.closePath(); });
+    // halo
+    shape("#d9a63e", function () { x.arc(cx, y0 + .1 * f, .095 * f, 0, Math.PI * 2); });
+    x.beginPath(); x.arc(cx, y0 + .1 * f, .072 * f, 0, Math.PI * 2); x.lineWidth = lw * .6; x.stroke();
+    // the cloak over both shoulders, falling to the feet
+    shape(ROBE[1], function () {
+      x.moveTo(cx - .06 * f, y0 + .19 * f);
+      x.quadraticCurveTo(cx - bw * .95, y0 + .2 * f, cx - bw, y0 + .36 * f);
+      x.lineTo(cx - bw * 1.02, y0 + .9 * f); x.quadraticCurveTo(cx, y0 + .94 * f, cx + bw * 1.02, y0 + .9 * f);
+      x.lineTo(cx + bw, y0 + .36 * f); x.quadraticCurveTo(cx + bw * .95, y0 + .2 * f, cx + .06 * f, y0 + .19 * f); x.closePath();
+    });
+    // the robe, seen between the folds of the cloak, with a gold belt
+    shape(ROBE[0], function () { x.moveTo(cx - .05 * f, y0 + .2 * f); x.lineTo(cx + .05 * f, y0 + .2 * f); x.lineTo(cx + bw * .5, y0 + .91 * f); x.lineTo(cx - bw * .5, y0 + .91 * f); x.closePath(); });
+    shape("#d9a63e", function () { x.rect(cx - bw * .32, y0 + .53 * f, bw * .64, .018 * f); });
+    x.beginPath();
+    [-.72, -.5, .5, .72].forEach(function (k) { x.moveTo(cx + k * bw * .9, y0 + .42 * f); x.quadraticCurveTo(cx + k * bw * .97, y0 + .7 * f, cx + k * bw * 1.0, y0 + .9 * f); });
+    x.moveTo(cx - bw * .12, y0 + .6 * f); x.lineTo(cx - bw * .18, y0 + .9 * f); x.moveTo(cx + bw * .12, y0 + .6 * f); x.lineTo(cx + bw * .18, y0 + .9 * f);
+    x.lineWidth = lw * .7; x.strokeStyle = LEAD; x.stroke();
+    // hair, face, hands
+    shape("#5a3418", function () { x.arc(cx, y0 + .105 * f, .058 * f, Math.PI * .95, Math.PI * 2.05); x.lineTo(cx + .05 * f, y0 + .17 * f); x.lineTo(cx - .05 * f, y0 + .17 * f); x.closePath(); });
+    shape("#ecd3ad", function () { x.ellipse(cx, y0 + .12 * f, .038 * f, .048 * f, 0, 0, Math.PI * 2); });
+    x.beginPath(); x.moveTo(cx - .014 * f, y0 + .113 * f); x.lineTo(cx - .006 * f, y0 + .113 * f); x.moveTo(cx + .006 * f, y0 + .113 * f); x.lineTo(cx + .014 * f, y0 + .113 * f);
+    x.lineWidth = lw * .5; x.stroke();
+    shape("#ecd3ad", function () { x.arc(cx - .028 * f, y0 + .4 * f, .019 * f, 0, Math.PI * 2); });
+    shape("#ecd3ad", function () { x.arc(cx + .028 * f, y0 + .4 * f, .019 * f, 0, Math.PI * 2); });
+    // what the saint holds
+    if (variant % 3 === 0) {          // a budded cross, held at the chest
+      shape("#e2b04c", function () { x.rect(cx - .008 * f, y0 + .27 * f, .016 * f, .2 * f); x.rect(cx - .045 * f, y0 + .31 * f, .09 * f, .016 * f); });
+    } else if (variant % 3 === 1) {   // a lily
+      shape("#3d7a3a", function () { x.rect(cx + .03 * f - .005 * f, y0 + .23 * f, .01 * f, .18 * f); });
+      [[0, .22], [-.025, .26], [.025, .265]].forEach(function (q) { shape("#f4ecd8", function () { x.ellipse(cx + .03 * f + q[0] * f, y0 + q[1] * f, .018 * f, .028 * f, q[0] * 9, 0, Math.PI * 2); }); });
+    } else {                          // an open book
+      shape("#f4ecd8", function () { x.moveTo(cx - .065 * f, y0 + .35 * f); x.lineTo(cx, y0 + .365 * f); x.lineTo(cx + .065 * f, y0 + .35 * f); x.lineTo(cx + .065 * f, y0 + .42 * f); x.lineTo(cx, y0 + .435 * f); x.lineTo(cx - .065 * f, y0 + .42 * f); x.closePath(); });
+      x.beginPath(); x.moveTo(cx, y0 + .365 * f); x.lineTo(cx, y0 + .435 * f); x.lineWidth = lw * .6; x.stroke();
+    }
+    // the pedestal
+    shape("#d9a63e", function () { x.rect(cx - bw - .03, y0 + .91 * f, 2 * bw + .06, .05 * f); });
+    x.restore();
+    // antique glass: the figure's colours vary a little, like the rest
+    var img = x.getImageData(0, 0, W, H), d = img.data, nz = lattice(24);
+    for (var py = 0; py < H; py++) for (var px = 0; px < W; px++) {
+      var o = (py * W + px) * 4; if (!d[o + 3]) continue;
+      var g = .86 + .2 * vn(nz, px / W, py / H * 3);
+      d[o] *= g; d[o + 1] *= g; d[o + 2] *= g;
+    }
+    x.putImageData(img, 0, 0);
   }
   // the rose window: twelve petals and a ring of roundels around a quatrefoil
   function roseTex() {
@@ -532,7 +599,7 @@
   function build() {
     var stone = mesh("stone"), vault = mesh("vault"), rib = mesh("rib"), floor = mesh("floor"), marble = mesh("marble"),
       carpet = mesh("carpet"), wood = mesh("wood"), gold = mesh("gold"), wax = mesh("wax"), lamp = mesh("lamp"),
-      gC = mesh("glassC"), gA = mesh("glassA"), gH = mesh("glassH"), rose = mesh("rose"), stars = mesh("stars"), niche = mesh("niche"), dark = mesh("dark");
+      rose = mesh("rose"), stars = mesh("stars"), niche = mesh("niche"), dark = mesh("dark");
     var X = M.wallX, Z0 = M.west, ZE = M.altarZ, ZC = M.firstPier + (M.piers - 1) * M.bay;   // ZC: where the chancel begins (24)
     var vaultY = pointed(-X, X, VAULT, 1.5), apex = vaultY(0);
 
@@ -585,9 +652,9 @@
         sweep(rib, function (t) { var z = za + (zb - za) * t; return [xi - s * .03, arch(z), z]; }, 24, ring(.065, 8), function () { return [1, 0, 0]; });
         sweep(rib, function (t) { var z = za - .16 + (zb - za + .32) * t; return [xi - s * .02, pointed(za - .16, zb + .16, SPRING, 1.55)(z), z]; }, 24, ring(.04, 6), function () { return [1, 0, 0]; });
         // clerestory: a stained-glass lancet in each bay
-        windowWall(stone, xi, s, z0, z1, zm, .92, COURSE + .35, COURSE + 1.6, COURSE, VAULT, gC, .4);
+        windowWall(stone, xi, s, z0, z1, zm, .92, COURSE + .35, COURSE + 1.6, COURSE, VAULT, mesh("glassC" + ((p + (s > 0 ? 1 : 0)) % 3)), .4);
         // the side aisle: its outer wall with a taller window, and a dark timber ceiling
-        windowWall(stone, s * M.aisleX, s, z0, z1, zm, 1.1, 1.5, 4.2, 0, 7.2, gA, .32);
+        windowWall(stone, s * M.aisleX, s, z0, z1, zm, 1.1, 1.5, 4.2, 0, 7.2, mesh("glassA" + ((p + (s > 0 ? 2 : 0)) % 3)), .32);
         surf(dark, 1, 1, function (i, j) { return [s * (X + .5 + (M.aisleX - X - .5) * i), 7.2, z0 + j * M.bay]; });
       }
       // the aisle wall west of the first pier, and its end wall by the chancel
@@ -595,7 +662,7 @@
       surf(dark, 1, 1, function (i, j) { return [s * (X + .5 + (M.aisleX - X - .5) * i), 7.2, Z0 + j * (M.firstPier - Z0)]; });
       surf(stone, 1, 1, function (i, j) { return [s * (X + .5 + (M.aisleX - X - .5) * i), j * 7.2, ZC]; }, { ao: function (i, j) { return .5 + .3 * j; } });
       // the chancel: one tall window each side
-      windowWall(stone, xi, s, ZC, ZE, (ZC + ZE) / 2 + .2, 1.0, 3.6, 7.4, 0, VAULT, gH, .45);
+      windowWall(stone, xi, s, ZC, ZE, (ZC + ZE) / 2 + .2, 1.0, 3.6, 7.4, 0, VAULT, mesh("glassH" + (s > 0 ? 1 : 0)), .45);
       // string courses along the whole nave
       [SPRING, COURSE, VAULT].forEach(function (y, q) {
         sweep(rib, function (t) { return [xi - s * .04, y, Z0 + (ZE - Z0) * t]; }, 1, ring(q === 1 ? .07 : .055, 8), function () { return [1, 0, 0]; });
@@ -606,8 +673,6 @@
     var base = [[.47, .32], [.47, .36], [.41, .4], [.43, .47], [.37, .53], [.35, .6], [.31, .66]];
     var shaft = [[.31, .66], [.3, .72], [.3, 4.2], [.31, 4.24]];
     var cap = []; for (var c = 0; c <= 12; c++) { var t = c / 12; cap.push([.3 + .16 * t * t + .02 * Math.sin(t * Math.PI), 4.26 + .66 * t]); }
-    function flute(a) { return 1 - .085 * Math.pow(Math.max(0, Math.cos(a * 24)), .7); }
-    function fluteAO(a) { return .7 + .3 * (1 - Math.pow(Math.max(0, Math.cos(a * 24)), .7)); }
     function leaves(a, j) {
       var t = j / 12, l1 = Math.pow(Math.abs(Math.cos(a * 4)), 3) * Math.sin(Math.min(1, t / .55) * Math.PI) * .2;
       var l2 = Math.pow(Math.abs(Math.sin(a * 4)), 3) * Math.max(0, Math.sin(Math.min(1, Math.max(0, (t - .35) / .55)) * Math.PI)) * .18;
@@ -620,7 +685,7 @@
         var xp = s * M.pierX;
         box(stone, xp - .48, 0, zp - .48, xp + .48, .32, zp + .48, [.55, .9]);
         lathe(stone, xp, 0, zp, base, 32, null, function (a, j) { return .75 + .25 * j / 6; });
-        lathe(stone, xp, 0, zp, shaft, 144, function (a, j) { return j === 1 || j === 2 ? flute(a) : 1; }, function (a, j) { return j === 1 || j === 2 ? fluteAO(a) : .9; });
+        lathe(mesh("shaft"), xp, 0, zp, shaft, 48);
         lathe(stone, xp, 0, zp, cap, 64, leaves, function (a, j) { var l = leaves(a, j) - 1; return .72 + Math.min(.28, l * 1.6); });
         box(stone, xp - .49, 4.92, zp - .49, xp + .49, SPRING, zp + .49, [.85, 1]);
         // a vaulting shaft rising from the capital to the vault
@@ -803,6 +868,7 @@
     ["wax", [1, .94, .82], "white", 0, 1, .2, 10, .25, 0],
     ["lamp", [1, .8, .52], "white", 0, 1, 0, 1, .55, 0, "lamp"],
     ["stone", [1, 1, 1], "stone", 1, .5, .06, 14, 0, 0],
+    ["shaft", [1, 1, 1], "stone", 4, .5, .08, 16, 0, 0],
     ["rib", [.97, .9, .76], "stone", 1, .5, .1, 18, 0, 0],
     ["marble", [1.05, 1.02, 1], "marble", 1, 1 / 2.4, .5, 60, 0, 0],
     ["niche", [1, 1, 1], "niche", 2, 1, .2, 20, .25, 0],
@@ -811,9 +877,9 @@
     ["floor", [.95, .95, .95], "marble", 3, 1 / 2.4, .38, 50, 0, 0],
     ["vault", [1.04, 1, .95], "stone", 1, .5, .02, 8, 0, 0],
     ["stars", [1, 1, 1], "stars", 1, .45, .3, 20, .1, 0],
-    ["glassC", [1, 1, 1], "glassC", 2, 1, 0, 1, .95, 0, "win"],
-    ["glassA", [1, 1, 1], "glassA", 2, 1, 0, 1, .8, 0, "win"],
-    ["glassH", [1, 1, 1], "glassH", 2, 1, 0, 1, 1.0, 0, "win"],
+    ["glassC0", [1, 1, 1], "glassC0", 2, 1, 0, 1, .95, 0, "win"], ["glassC1", [1, 1, 1], "glassC1", 2, 1, 0, 1, .95, 0, "win"], ["glassC2", [1, 1, 1], "glassC2", 2, 1, 0, 1, .95, 0, "win"],
+    ["glassA0", [1, 1, 1], "glassA0", 2, 1, 0, 1, .85, 0, "win"], ["glassA1", [1, 1, 1], "glassA1", 2, 1, 0, 1, .85, 0, "win"], ["glassA2", [1, 1, 1], "glassA2", 2, 1, 0, 1, .85, 0, "win"],
+    ["glassH0", [1, 1, 1], "glassH0", 2, 1, 0, 1, 1.0, 0, "win"], ["glassH1", [1, 1, 1], "glassH1", 2, 1, 0, 1, 1.0, 0, "win"],
     ["rose", [1, 1, 1], "rose", 2, 1, 0, 1, 1.1, 0, "rose"],
   ];
   function upload() {
@@ -863,6 +929,7 @@
     gl.useProgram(progB);
     gl.uniform3f(UB.Cam, 0, M.eye, cam); gl.uniform4fv(UB.Proj, proj); gl.uniform2f(UB.Yaw, yc, ys);
     gl.uniform3f(UB.Eye, 0, M.eye, cam);
+    gl.uniform1f(UB.K, k * dpr);
     // the chandeliers, the altar, the sanctuary and the rose window: always the
     // same lights, steady (no flicker on the stone), lit one by one as the church wakes
     for (var q = 0; q < 8; q++) {
@@ -1033,7 +1100,7 @@
     U.aQ = gl.getAttribLocation(prog, "aQ");
     ["O", "U", "V", "Cam", "UV", "Proj", "Tint", "Fog", "Cut", "T", "Yaw", "Expo"].forEach(function (n) { U[n] = gl.getUniformLocation(prog, "u" + n); });
     ["aP", "aN", "aU", "aA"].forEach(function (n) { UB[n] = gl.getAttribLocation(progB, n); });
-    ["Cam", "Proj", "Yaw", "T", "Alb", "Mat", "Metal", "Eye", "Amb", "SunD", "SunC", "Haze", "Expo", "Fog", "Grade"].forEach(function (n) { UB[n] = gl.getUniformLocation(progB, "u" + n); });
+    ["Cam", "Proj", "Yaw", "T", "Alb", "Mat", "Metal", "Eye", "Amb", "SunD", "SunC", "Haze", "Expo", "Fog", "Grade", "K"].forEach(function (n) { UB[n] = gl.getUniformLocation(progB, "u" + n); });
     UB.LP = gl.getUniformLocation(progB, "uLP[0]"); UB.LC = gl.getUniformLocation(progB, "uLC[0]");
     UP.aP = gl.getAttribLocation(progP, "aP");
     ["Cam", "Proj", "Px", "Yaw", "Expo"].forEach(function (n) { UP[n] = gl.getUniformLocation(progP, "u" + n); });
@@ -1054,9 +1121,12 @@
       function () { tex.wood = texture(woodTex(), true); tex.carpet = texture(carpetTex(), true); },
       function () { tex.stars = texture(starTex(), true); tex.niche = texture(nicheTex()); tex.frontal = texture(frontalTex()); },
       function () { tex.rose = texture(roseTex()); },
-      function () { tex.glassC = texture(lancetTex(.92, 1.25 + rise(.92), 1.25)); },
-      function () { tex.glassA = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7)); },
-      function () { tex.glassH = texture(lancetTex(1.0, 3.8 + rise(1.0), 3.8)); },
+      function () { for (var v = 0; v < 3; v++) tex["glassC" + v] = texture(lancetTex(.92, 1.25 + rise(.92), 1.25, v, 128, 512)); },
+      function () { tex.glassA0 = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7, 0, 256, 1024)); },
+      function () { tex.glassA1 = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7, 1, 256, 1024)); },
+      function () { tex.glassA2 = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7, 2, 256, 1024)); },
+      function () { tex.glassH0 = texture(lancetTex(1.0, 3.8 + rise(1.0), 3.8, 1, 256, 1024)); },
+      function () { tex.glassH1 = texture(lancetTex(1.0, 3.8 + rise(1.0), 3.8, 2, 256, 1024)); },
       build,
       function () { upload(); ready = true; dirty = true; },
     ];

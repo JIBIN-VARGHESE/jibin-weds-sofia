@@ -174,8 +174,8 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .nave > * { position: absolute; }
 .nave__gl { inset: 0; width: 100%; height: 100%; display: block; }
 .nave--still { background: #060403; }
-.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261024f") 50% 40% / cover no-repeat; }
-@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261024f"); } }
+.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261024h") 50% 40% / cover no-repeat; }
+@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261024h"); } }
 .nave__vignette { inset: 0; z-index: 5; background: radial-gradient(130% 95% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
 
 /* ======================================================= HERO (film) */
@@ -427,12 +427,12 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 /* TEST (?gold=photo): the gold and the ink as pictures instead of colours.
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
-.ink-photo .card { background: url("../images/card/gold.webp?v=20261024f") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024f"); }
-.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024f"); }
-.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024f"); }
-.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024f"); }
-.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024f"); }
+.ink-photo .card { background: url("../images/card/gold.webp?v=20261024h") 0 0 / 100% 100%; }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024h"); }
+.ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024h"); }
+.ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024h"); }
+.ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024h"); }
+.ink-photo .card .orn { background: url("../images/card/ink-accent.webp?v=20261024h"); }
 .ink-photo .card .btn:hover > span { background-image: linear-gradient(currentColor, currentColor); }
 
 /* ------------------------------------------------------ words in the church */
@@ -453,7 +453,13 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .verse__text { color: #FFF8EA; font-weight: 400; font-style: italic; font-size: clamp(1.75rem, 7.4vw, 2.6rem); line-height: 1.26; text-shadow: 0 1px 3px rgba(0, 0, 0, .75), 0 2px 16px rgba(0, 0, 0, .7), 0 0 28px rgba(240, 184, 102, .3); }
 .verse__text .w { display: inline-block; opacity: clamp(.16, calc(var(--p, 1) * 1.35 * (var(--n) + 2) - var(--i)), 1); }
 .verse__ref { margin-top: 1.3rem; display: flex; align-items: center; justify-content: center; gap: 1rem; font-family: var(--sans); font-weight: 500; font-size: .74rem; letter-spacing: var(--track); text-transform: uppercase; color: var(--gold); opacity: clamp(0, calc((var(--p, 1) - .72) / .15), 1); }
-.presence__line { max-width: 21rem; font-style: italic; font-size: clamp(1.8rem, 7.4vw, 2.6rem); line-height: 1.25; color: #FFF8EA; text-shadow: 0 1px 2px rgba(60, 30, 0, .7), 0 0 26px rgba(70, 40, 10, .6); }
+/* the last words, as the rose window's light floods the screen: dark ink
+   with a halo of light, above the flood (readable on the church and the white) */
+.presence__line { position: relative; max-width: 21rem; font-style: italic; font-weight: 500; font-size: clamp(1.8rem, 7.4vw, 2.6rem); line-height: 1.25; color: #3A220C;
+  text-shadow: 0 0 2px rgba(255, 250, 238, .9), 0 0 16px rgba(255, 246, 228, .95), 0 0 40px rgba(255, 238, 206, .85); }
+.presence__line::before { content: ""; position: absolute; z-index: -1; inset: -30% -16%; background: radial-gradient(closest-side, rgba(255, 248, 232, .78), rgba(255, 244, 222, .45) 55%, rgba(255, 240, 214, 0)); }
+.scene--line { isolation: isolate; }
+.journey .scene--line { z-index: 5; }
 
 /* ------------------------------------------------------------ the finale */
 .flash { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; opacity: 0; }
@@ -479,9 +485,34 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .finale__full { font-family: var(--sans); font-weight: 500; font-size: .74rem; letter-spacing: var(--track); text-transform: uppercase; color: var(--cream); }
 .finale__date { font-family: var(--display); font-size: 1rem; letter-spacing: .4em; margin-right: -.4em; color: var(--gold); }
 .finale__quote { margin-top: .4rem; max-width: 22rem; font-style: italic; font-size: 1.25rem; line-height: 1.35; color: var(--cream); }
-.finale__ref { margin-top: -.3rem; font-family: var(--sans); font-weight: 500; font-size: .72rem; letter-spacing: var(--track); text-transform: uppercase; color: var(--gold); }
+.finale__ref { text-shadow: 0 1px 3px rgba(0, 0, 0, .9), 0 0 14px rgba(0, 0, 0, .8); margin-top: -.3rem; font-family: var(--sans); font-weight: 500; font-size: .72rem; letter-spacing: var(--track); text-transform: uppercase; color: var(--gold); }
 /* the last candle: a placeholder; the flame is drawn on the dust canvas */
-.finale__candle { display: block; width: 60px; height: 64px; margin-top: -.2rem; }
+.finale__candle { display: block; width: 52px; height: 52px; margin: -.3rem 0 -.4rem; }
+/* the day at a glance: two events on a pane of smoked glass */
+.finale__plan { display: grid; grid-template-columns: 1fr 1fr; width: min(100%, 25rem); margin-top: .2rem; text-shadow: none;
+  background: rgba(14, 9, 5, .5); border: 1px solid rgba(217, 174, 98, .32); border-radius: 14px; overflow: hidden;
+  -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
+.plan { display: grid; align-content: start; gap: .15rem; padding: .65rem .4rem .6rem; min-width: 0; }
+.plan + .plan { border-left: 1px solid rgba(217, 174, 98, .25); }
+.plan__what { font-family: var(--sans); font-weight: 500; font-size: .64rem; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+.plan__what span { display: block; margin-top: .2rem; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 1.05rem; letter-spacing: 0; text-transform: none; color: #FFF3DE; }
+.plan__where { font-family: var(--display); font-size: .74rem; line-height: 1.28; letter-spacing: .03em; color: #FFF8EA; min-height: 2.56em; }
+.plan__acts { display: flex; justify-content: center; gap: .3rem; margin-top: .3rem; }
+.plan__btn { display: flex; align-items: center; justify-content: center; gap: .3rem; min-height: 34px; padding: 0 .42rem; border-radius: 999px;
+  border: 1px solid rgba(217, 174, 98, .55); background: rgba(217, 174, 98, .08); color: #FFF3DE; text-decoration: none; cursor: pointer;
+  font-family: var(--sans); font-weight: 500; font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; transition: background-color .3s var(--ease), color .3s var(--ease); }
+.plan__btn svg { width: 13px; height: 13px; flex: none; }
+.plan__btn:hover, .plan__btn:focus-visible { background: var(--gold); color: #1C1208; }
+/* on phones the short names above say it all: the full names give their room to the plan */
+/* phones: the names and the verse above, the couple clear in the middle,
+   the candle, the day's plan and sharing below */
+@media (max-aspect-ratio: 1/1) {
+  .finale__full { display: none; }
+  .finale__text { top: 0; display: flex; flex-direction: column; align-items: center; gap: .55rem;
+    padding: max(9svh, 4.6rem) var(--gutter) max(3svh, calc(env(safe-area-inset-bottom) + .8rem));
+    background: linear-gradient(180deg, rgba(8, 5, 3, .82) 0%, rgba(8, 5, 3, .5) 26%, rgba(8, 5, 3, 0) 40%, rgba(8, 5, 3, 0) 62%, rgba(8, 5, 3, .62) 74%, rgba(8, 5, 3, .9) 100%); }
+  .finale__candle { margin-top: auto; }
+}
 .finale__share { min-height: 44px; margin-top: -.3rem; padding: .6rem 1.3rem; border-color: rgba(217, 174, 98, .55); background: rgba(14, 10, 7, .35); text-shadow: none; }
 
 /* ================================================== JOURNEY MODE (JS on)

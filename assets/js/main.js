@@ -69,8 +69,8 @@
     weddingVenueFull: [W.churchName, W.churchAddress].filter(Boolean).join(", ") || tba("Venue details to follow"),
     receptionVenueFull: [W.receptionVenue, W.receptionAddress].filter(Boolean).join(", ") || tba("Venue details to follow"),
     rsvpDeadline: R.deadline ? "Kindly reply by " + (function (d) { return d.d + " " + d.month + " " + d.y; })(parseDate(R.deadline)) + "." : "Your reply helps us plan the day.",
-    brideParentsLine: C.couple && C.couple.brideParents ? "daughter of " + C.couple.brideParents : "",
-    groomParentsLine: C.couple && C.couple.groomParents ? "son of " + C.couple.groomParents : "",
+    brideParentsLine: C.couple && C.couple.brideParents ? "D/o " + C.couple.brideParents : "",
+    groomParentsLine: C.couple && C.couple.groomParents ? "S/o " + C.couple.groomParents : "",
     weddingWeekdayShort: wd.weekday.slice(0, 3), weddingMonthShort: wd.month.slice(0, 3),
     countdownNote: wd.weekday + ", " + wd.d + " " + wd.month + " " + wd.y + " · " + (W.town || ""),
   };
@@ -145,7 +145,8 @@
         var s = el("span", "w", w);
         s.style.setProperty("--i", i);
         verse.appendChild(s);
-        if (i < words.length - 1) verse.appendChild(doc.createTextNode(" "));
+        // a new sentence starts on a new line
+        if (i < words.length - 1) verse.appendChild(/[.!?;]$/.test(w) ? el("br") : doc.createTextNode(" "));
       });
     }
 
