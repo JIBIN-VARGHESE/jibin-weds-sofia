@@ -14,6 +14,11 @@
    daylight from the windows; stone, marble, wood and glass are painted into
    small textures at start-up. Light beams, glows, flames and dust are added
    on top. About 10 draw calls for the building: smooth on phones.
+   While words are held in front of the church, the lens pulls focus to
+   them: the finished frame is blurred at a quarter size and laid over
+   itself (P.focus). The camera can lean a few centimetres and circle a
+   point ahead of it (P.ox, P.oy, P.orbit), which gives the church real
+   parallax behind the cards.
    Falls back to a still image when WebGL is unavailable.
    ========================================================================== */
 (function () {
@@ -153,15 +158,49 @@
     "  float a = smoothstep(1., .1, d) * vB;",
     "  gl_FragColor = vec4(vec3(1., .8, .52) * a, 0.);",
     "}"].join("\n");
+  // focus: the finished frame, halved again and again and grown back (a
+  // "dual filter" blur, cheap on phones), then laid over itself
+  var VS_F = "attribute vec2 aQ; varying vec2 vUV; void main(){ vUV = aQ; gl_Position = vec4(aQ * 2. - 1., 0., 1.); }";
+  var FS_DOWN = [
+    "precision mediump float;",
+    "uniform sampler2D uT; uniform vec2 uH; varying vec2 vUV;",
+    "void main(){",
+    "  vec4 c = texture2D(uT, vUV) * 4.;",
+    "  c += texture2D(uT, vUV - uH) + texture2D(uT, vUV + uH);",
+    "  c += texture2D(uT, vUV + vec2(uH.x, -uH.y)) + texture2D(uT, vUV - vec2(uH.x, -uH.y));",
+    "  gl_FragColor = c / 8.;",
+    "}"].join("\n");
+  var FS_UP = [
+    "precision mediump float;",
+    "uniform sampler2D uT; uniform vec2 uH; varying vec2 vUV;",
+    "void main(){",
+    "  vec4 c = texture2D(uT, vUV + vec2(-uH.x * 2., 0.)) + texture2D(uT, vUV + vec2(uH.x * 2., 0.));",
+    "  c += texture2D(uT, vUV + vec2(0., uH.y * 2.)) + texture2D(uT, vUV + vec2(0., -uH.y * 2.));",
+    "  c += (texture2D(uT, vUV + uH) + texture2D(uT, vUV - uH) + texture2D(uT, vUV + vec2(uH.x, -uH.y)) + texture2D(uT, vUV - vec2(uH.x, -uH.y))) * 2.;",
+    "  gl_FragColor = c / 12.;",
+    "}"].join("\n");
+  // the soft frame over the sharp one: a little soft (uT) or softer (uU),
+  // so focus deepens gradually rather than one blur fading in over another
+  var FS_COMP = [
+    "precision mediump float;",
+    "uniform sampler2D uT, uU; uniform float uA, uM; varying vec2 vUV;",
+    "void main(){",
+    "  gl_FragColor = vec4(mix(texture2D(uT, vUV).rgb, texture2D(uU, vUV).rgb, uM), uA);",
+    "}"].join("\n");
 
   var gl, canvas, prog, progB, progP, U = {}, UB = {}, UP = {}, quadBuf, moteBuf, tex = {}, ready = false;
   var W = 0, H = 0, dpr = 1, k = 1, hz = 0, CW = 0;   // CW: page width in CSS px, kept from the last resize
   var lights = [], points = [], motes, moteData, NM = 70, draws = [];
   // P: what journey.js asks for each frame
   // dim: 0..1, how much words are on screen (the church steps back behind them)
-  var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0, dim: 0 };
+  // focus: 0..1, the lens focused on the words in front (the church goes soft)
+  // ox, oy: the camera's lean (metres, sideways and up, in the view);
+  // orbit: 0..1, how much the camera circles a point `pivot` metres ahead
+  // instead (that point stays still on screen and the church swings behind it)
+  var P = { camZ: 0, yaw: 0, expo: 1, ignite: 1, win: 1, bloom: 0, dim: 0, focus: 0, ox: 0, oy: 0, orbit: 0, pivot: 2.35 };
+  var post = null;   // the focus passes (programs, textures, framebuffers); null if not supported
   var SAT = 1, BRIGHT = 1, DIM = .16;   // the church's colour grade
-  var opts = {}, dirty = true, slowFrames = 0, host, lastDraw = 0, lastKey = "", acc = 0, accN = 0;
+  var opts = {}, dirty = true, slowFrames = 0, host, lastDraw = 0, lastKey = "", lastKey2 = "", acc = 0, accN = 0;
 
   /* ------------------------------------------------------------- setup */
   function compile(vs, fs) {
@@ -915,20 +954,28 @@
   }
   var LP = new Float32Array(32), LC = new Float32Array(24);
 
+  // the camera this frame: where it stands (the aisle position plus its lean,
+  // turned with the view) and the lens shift that keeps the pivot in place
+  function view() {
+    var c = Math.cos(P.yaw), s = Math.sin(P.yaw), ox = P.ox || 0, oy = P.oy || 0;
+    var sh = P.orbit > 0 ? P.orbit * k / Math.max(.5, P.pivot) : 0;
+    return { x: c * ox, y: M.eye + oy, z: P.camZ - s * ox, c: c, s: s, sx: ox * sh, sy: -oy * sh };
+  }
+
   function render(time) {
-    var cam = P.camZ, cw = W / dpr, ch = H / dpr, yc = Math.cos(P.yaw), ys = Math.sin(P.yaw);
+    var cam = P.camZ, cw = W / dpr, ch = H / dpr, yc = Math.cos(P.yaw), ys = Math.sin(P.yaw), V = view();
     var tsec = time / 1000, reach = P.ignite * (M.altarZ + 2), win = P.win;
     gl.viewport(0, 0, W, H);
     gl.clearColor(.022, .016, .013, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    var proj = [2 * k / cw, 2 * k / ch, 0, 1 - 2 * hz / ch];
+    var proj = [2 * k / cw, 2 * k / ch, 2 * V.sx / cw, 1 - 2 * (hz + V.sy) / ch];
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
     gl.disable(gl.BLEND);
 
     /* the building */
     gl.useProgram(progB);
-    gl.uniform3f(UB.Cam, 0, M.eye, cam); gl.uniform4fv(UB.Proj, proj); gl.uniform2f(UB.Yaw, yc, ys);
-    gl.uniform3f(UB.Eye, 0, M.eye, cam);
+    gl.uniform3f(UB.Cam, V.x, V.y, V.z); gl.uniform4fv(UB.Proj, proj); gl.uniform2f(UB.Yaw, yc, ys);
+    gl.uniform3f(UB.Eye, V.x, V.y, V.z);
     gl.uniform1f(UB.K, k * dpr);
     // the chandeliers, the altar, the sanctuary and the rose window: always the
     // same lights, steady (no flicker on the stone), lit one by one as the church wakes
@@ -979,7 +1026,7 @@
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.enableVertexAttribArray(U.aQ);
     gl.vertexAttribPointer(U.aQ, 2, gl.FLOAT, false, 0, 0);
-    gl.uniform3f(U.Cam, 0, M.eye, cam);
+    gl.uniform3f(U.Cam, V.x, V.y, V.z);
     gl.uniform4fv(U.Proj, proj);
     gl.uniform2f(U.Yaw, yc, ys);
     gl.uniform1f(U.Expo, (grade + (1 - grade) * P.bloom) * .9);
@@ -1012,7 +1059,7 @@
     }
     // dust in the light
     gl.useProgram(progP);
-    gl.uniform3f(UP.Cam, 0, M.eye, cam); gl.uniform4fv(UP.Proj, proj); gl.uniform1f(UP.Px, k * dpr);
+    gl.uniform3f(UP.Cam, V.x, V.y, V.z); gl.uniform4fv(UP.Proj, proj); gl.uniform1f(UP.Px, k * dpr);
     gl.uniform2f(UP.Yaw, yc, ys); gl.uniform1f(UP.Expo, P.expo * (.4 + .6 * P.win) * grade);
     for (i = 0; i < NM; i++) {
       var m = motes[i];
@@ -1031,6 +1078,83 @@
     gl.drawArrays(gl.POINTS, 0, NM);
     gl.disableVertexAttribArray(UP.aP);
     gl.depthMask(true);
+
+    /* focus: the church goes soft behind the words in front of it. Skipped
+       only on a device already at its lowest resolution and still struggling. */
+    if (post && P.focus > .003 && slowFrames < 4 && sizePost()) soften(Math.min(1, P.focus));
+  }
+
+  /* ------------------------------------------------------------- focus */
+  function setupPost() {
+    try { post = { down: compile(VS_F, FS_DOWN), up: compile(VS_F, FS_UP), comp: compile(VS_F, FS_COMP), w: 0, h: 0, lv: [] }; }
+    catch (e) { post = null; return; }
+    ["down", "up", "comp"].forEach(function (n) {
+      var p = post[n];
+      post[n] = { p: p, aQ: gl.getAttribLocation(p, "aQ"), T: gl.getUniformLocation(p, "uT"), U: gl.getUniformLocation(p, "uU"), H: gl.getUniformLocation(p, "uH"), A: gl.getUniformLocation(p, "uA"), M: gl.getUniformLocation(p, "uM") };
+    });
+  }
+  function plainTex(w, h, fmt) {
+    var t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, fmt, w, h, 0, fmt, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  // the copy of the frame and smaller targets (1/2, 1/4, 1/8 and one more
+  // 1/4 for the way back up), made again when the canvas changes size
+  function sizePost() {
+    if (post.w === W && post.h === H) return true;
+    if (post.copy) gl.deleteTexture(post.copy.t);
+    post.lv.forEach(function (l) { gl.deleteTexture(l.t); gl.deleteFramebuffer(l.fb); });
+    post.copy = { t: plainTex(W, H, gl.RGB), w: W, h: H };   // the canvas has no alpha, so neither can its copy
+    post.lv = [];
+    for (var i = 1; i <= 4; i++) {
+      var d = Math.pow(2, i < 4 ? i : 2), w = Math.max(1, Math.round(W / d)), h = Math.max(1, Math.round(H / d));
+      var l = { t: plainTex(w, h, gl.RGBA), fb: gl.createFramebuffer(), w: w, h: h };
+      gl.bindFramebuffer(gl.FRAMEBUFFER, l.fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, l.t, 0);
+      var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      post.lv.push(l);
+      if (!ok) { post = null; return false; }
+    }
+    post.w = W; post.h = H;
+    return true;
+  }
+  // f 0..1: sharp → a little soft (by .4) → soft
+  function soften(f) {
+    var L = post.lv, a = Math.min(1, f / .4), m = Math.max(0, (f - .4) / .6);
+    gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.BLEND);
+    gl.bindTexture(gl.TEXTURE_2D, post.copy.t);
+    gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, W, H);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    function pass(pr, src, dst, spread) {
+      var w = dst ? dst.w : W, h = dst ? dst.h : H;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, dst ? dst.fb : null);
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(pr.p);
+      gl.enableVertexAttribArray(pr.aQ);
+      gl.vertexAttribPointer(pr.aQ, 2, gl.FLOAT, false, 0, 0);
+      gl.bindTexture(gl.TEXTURE_2D, src.t);
+      gl.uniform1i(pr.T, 0);
+      if (pr.H) gl.uniform2f(pr.H, spread * .5 / w, spread * .5 / h);
+      if (pr.A) { gl.uniform1f(pr.A, a); gl.uniform1f(pr.M, m); }
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    // down to 1/2, 1/4 (a little soft), 1/8, and back up to 1/4 (soft)
+    pass(post.down, post.copy, L[0], 1); pass(post.down, L[0], L[1], 1);
+    if (m > 0) { pass(post.down, L[1], L[2], 1); pass(post.up, L[2], L[3], 1); }
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, L[3].t); gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(post.comp.p); gl.uniform1i(post.comp.U, 1);
+    pass(post.comp, L[1], null, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0);
+    gl.disableVertexAttribArray(post.comp.aQ);
+    gl.depthMask(true);
+    boundTex = null;
   }
 
   /* --------------------------------------------------------- sizing */
@@ -1050,10 +1174,10 @@
 
   // where a world point appears on screen (CSS px), for anchoring page elements
   function project(x, y, z) {
-    var wx = x, wy = y - M.eye, wz = z - P.camZ, c = Math.cos(P.yaw), s = Math.sin(P.yaw);
-    var vx = wx * c - wz * s, vz = wx * s + wz * c;
+    var V = view(), wx = x - V.x, wy = y - V.y, wz = z - V.z;
+    var vx = wx * V.c - wz * V.s, vz = wx * V.s + wz * V.c;
     if (vz < .05) return null;
-    return { x: CW / 2 + vx * k / vz, y: hz - wy * k / vz, s: k / vz, dz: vz };
+    return { x: CW / 2 + vx * k / vz + V.sx, y: hz + V.sy - wy * k / vz, s: k / vz, dz: vz };
   }
 
   // draw one frame with the given camera/light state (called by journey.js)
@@ -1061,11 +1185,15 @@
     if (!ready) return;
     for (var key in p) P[key] = p[key];
     var sig = [P.camZ.toFixed(4), P.yaw.toFixed(4), P.expo.toFixed(3), P.ignite.toFixed(3), P.win.toFixed(3), P.bloom.toFixed(3), P.dim.toFixed(3)].join();
-    var moving = sig !== lastKey;
-    lastKey = sig;
+    // the lean and focus redraw too, but don't count as the journey moving
+    // (the lean in steps of 2 mm, so the camera's slow float rarely redraws
+    // on its own; a guest's hand moves it in many steps)
+    var sig2 = [P.focus.toFixed(3), Math.round(P.ox * 500), Math.round(P.oy * 500), P.orbit.toFixed(2)].join();
+    var moving = sig !== lastKey, changed = moving || sig2 !== lastKey2;
+    lastKey = sig; lastKey2 = sig2;
     // at rest only the candles and dust move: ~24 redraws a second is plenty
-    if (!moving && !dirty && now - lastDraw < 40) return;
-    // if the device struggles while moving, render fewer pixels
+    if (!changed && !dirty && now - lastDraw < 40) return;
+    // if the device struggles while the journey moves, render fewer pixels
     if (moving && lastDraw) {
       acc += now - lastDraw; accN++;
       if (accN > 45) { if (acc / accN > 24 && slowFrames < 4) { slowFrames++; resize(); } acc = 0; accN = 0; }
@@ -1105,6 +1233,7 @@
     UP.aP = gl.getAttribLocation(progP, "aP");
     ["Cam", "Proj", "Px", "Yaw", "Expo"].forEach(function (n) { UP[n] = gl.getUniformLocation(progP, "u" + n); });
     aniso = gl.getExtension("EXT_texture_filter_anisotropic") || gl.getExtension("WEBKIT_EXT_texture_filter_anisotropic");
+    if (opts.focus !== false) setupPost();
     quadBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
     moteBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, moteBuf);

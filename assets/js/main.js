@@ -34,6 +34,15 @@
     return h + ":" + pad(p[1] || 0) + (p[0] < 12 ? " am" : " pm");
   }
   function tba(text) { return { tba: text }; }
+  // a photograph still loading stays hidden, then fades in once it is
+  // decoded, rather than appearing half drawn (one already here shows at once)
+  function fadeIn(img) {
+    if (img.complete && img.naturalWidth) return;
+    img.classList.add("is-loading");
+    var show = function () { img.classList.remove("is-loading"); };
+    img.addEventListener("load", function () { if (img.decode) img.decode().then(show, show); else show(); }, { once: true });
+    img.addEventListener("error", show, { once: true });
+  }
   function el(tag, cls, text) {
     var e = doc.createElement(tag);
     if (cls) e.className = cls;
@@ -106,9 +115,9 @@
       if (!v) return;
       // pictures needed only at the end load once the page has finished loading
       if (img.hasAttribute("data-defer") && !reduceMotion.matches) {
-        var later = function () { setTimeout(function () { img.src = v; }, 400); };
+        var later = function () { setTimeout(function () { fadeIn(img); img.src = v; }, 400); };
         if (doc.readyState === "complete") later(); else window.addEventListener("load", later);
-      } else img.src = v;
+      } else { if (img.getAttribute("src") !== v) img.src = v; fadeIn(img); }
     });
     doc.querySelectorAll("[data-art-srcset]").forEach(function (src) {
       var v = art[src.getAttribute("data-art-srcset")];
