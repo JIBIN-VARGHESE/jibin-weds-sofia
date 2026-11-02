@@ -203,8 +203,8 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .nave > * { position: absolute; }
 .nave__gl { inset: 0; width: 100%; height: 100%; display: block; }
 .nave--still { background: var(--nave-black); }
-.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261102d") 50% 40% / cover no-repeat; }
-@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261102d"); } }
+.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261102e") 50% 40% / cover no-repeat; }
+@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261102e"); } }
 .nave__vignette { inset: 0; z-index: 5; background: radial-gradient(130% 95% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
 
 /* ======================================================= HERO (film) */
