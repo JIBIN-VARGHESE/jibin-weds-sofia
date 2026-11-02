@@ -27,10 +27,10 @@
   var STOPS = [0, 4.75, 8.22, 9.82, 11.42, 12.98, 14.85, 20.4];   // (the verse plays on the way from the invitation to the engagement)
   // how fast the timeline plays (units per second) in each stretch
   function rate(x) {
-    if (x < 1.1) return .38;            // the opening photo fades
-    if (x < 2.35) return .42;           // the church wakes
-    if (x > 2.95 && x < 3.2) return .1;    // Save the Date rests in the centre (~2.5 s), then you walk through it
-    if (x < 3.9) return .34;            // Save the Date settles, and you walk through it
+    if (x < 1.1) return .5;             // the opening photo fades
+    if (x < 2.35) return .55;           // the church wakes
+    if (x > 2.95 && x < 3.2) return .15;   // Save the Date rests in the centre (~1.7 s), then you walk through it
+    if (x < 3.9) return .42;            // Save the Date settles, and you walk through it
     if (x > 5.6 && x < 6.25) return .3;    // the verse appears and its words light up
     if (x > 6.25 && x < 6.75) return .25;  // ...it rests (~2 s), then you walk through it
     if (x < 15.6) return .46;           // walking between the cards (an unhurried glide)
@@ -40,7 +40,7 @@
   }
   var GATE_AT = 1400;       // ms after the names begin to appear that "Open the invitation" is offered
   var HURRY = 2.8;           // a tap or swipe while the journey moves plays it this much faster, to the next stop
-  var REPEAT_INTRO = 1;      // opening speed for a guest who has seen it before (1 = the same as the first time)
+  var REPEAT_INTRO = 1.6;    // opening speed for a guest who has seen it before (1 = the same as the first time)
   var HOLD = 2.35;           // metres between camera and a card while you read it
   var CARD_Y = 1.5;          // card height above the floor (metres)
   var FOCUS = 1, FOCUS_WORDS = .4;   // how soft the church goes behind a card / behind words in the aisle (0 = never, .4 a little, 1 soft)
@@ -125,9 +125,8 @@
     if (Math.abs(i - settled) > 1) i = settled + (i > settled ? 1 : -1);
     chapter = i;
   }
-  // the opening plays by itself: a scroll or tap during it only makes the
-  // "sit back" line glow, so guests see there is nothing to do yet (before
-  // the invitation is opened, the seal glows instead)
+  // before the invitation is opened, a stray tap or scroll makes the seal glow,
+  // so guests see where to tap
   function nudge() {
     var n = gate ? el.gate : el.intro;
     if (!n) return;
@@ -142,15 +141,16 @@
     if (el.gate) { el.gate.classList.add("is-open"); el.gate.blur(); }
     doc.dispatchEvent(new CustomEvent("invite:open"));
   }
-  // after the opening, input while the journey moves is never lost: it hurries the move along
+  // input while the journey moves is never lost: it hurries the move along.
+  // During the opening too, so an impatient guest is never made to wait.
   function hurry() {
     if (gate) return openInvite();
-    if (intro) return nudge();
+    if (intro) nudge();   // the "sit back" line also glows, to show the tap was felt
     boost = HURRY;
   }
   function next() {
     if (gate) return nudge();
-    if (intro) return nudge();
+    if (intro) return hurry();
     if (!resting && STOPS[chapter] > sm) return hurry();
     if (resting) { goTo(settled + 1); if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} }
   }

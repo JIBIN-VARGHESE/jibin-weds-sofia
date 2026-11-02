@@ -392,8 +392,6 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .card__foot { position: relative; margin-top: .5rem; padding-top: .95rem; border-top: 1px solid transparent; border-image: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent) 1; color: var(--fg-soft); }
 /* a small diamond at the centre of the rule above the footer line */
 .card__foot::before { content: ""; position: absolute; left: 50%; top: -4px; width: 7px; height: 7px; margin-left: -3.5px; transform: rotate(45deg); background: var(--foil-diamond); -webkit-text-fill-color: initial; }
-.card__bigdate { display: flex; align-items: center; gap: .55rem; font-family: var(--display); font-size: 1.9rem; line-height: 1; }
-.card__bigdate i { width: 1px; height: .8em; background: var(--accent); transform: rotate(18deg); }
 .card__venue { margin-top: .35rem; font-family: var(--display); font-weight: 400; font-size: 1.22rem; line-height: 1.22; letter-spacing: .05em; }
 .card__time { font-style: italic; font-size: 1.15rem; }
 .card__addr { color: var(--fg-soft); font-size: 1rem; }
@@ -435,7 +433,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
    which those modes treat like a picture and leave as it is. Everywhere
    else it looks exactly like plain text. */
 .card :is(.eyebrow, .invite__lines, .invite__names span, .invite__names em, .invite__parents, .card__title, .card__title em,
-  .card__date b, .card__date > span, .card__place, .card__text, .card__meta, .card__foot, .card__bigdate,
+  .card__date b, .card__date > span, .card__place, .card__text, .card__meta, .card__foot,
   .card__venue, .card__time, .card__addr, .countdown__num, .countdown__lbl, .field > label, .field legend,
   .field label span, .field__error, .rsvp__status, .btn:not(.btn--solid) > span) {
   background-image: linear-gradient(currentColor, currentColor);
@@ -459,7 +457,7 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
    Samsung Internet's dark mode repaints colours and gradients but leaves
    pictures alone; if this keeps the card gold there, it becomes the default. */
 .ink-photo .card { background: url("../images/card/gold.webp?v=20261024m") 0 0 / 100% 100%; }
-.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__bigdate, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024m"); }
+.ink-photo .card :is(.invite__lines, .invite__names span, .card__title, .card__place, .card__venue, .card__time, .countdown__num, .rsvp__status, .btn:not(.btn--solid) > span) { background-image: url("../images/card/ink.webp?v=20261024m"); }
 .ink-photo .card :is(.card__text, .card__foot, .card__addr, .field label span, .tba, .invite__parents) { background-image: url("../images/card/ink-soft.webp?v=20261024m"); }
 .ink-photo .card :is(.eyebrow, .card__meta, .card__date b, .card__date > span, .countdown__lbl, .field > label, .field legend) { background-image: url("../images/card/ink-accent.webp?v=20261024m"); }
 .ink-photo .card :is(.card__title em, .invite__names em) { background-image: url("../images/card/ink-script.webp?v=20261024m"); }

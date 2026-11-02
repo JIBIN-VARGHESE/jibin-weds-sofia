@@ -60,6 +60,8 @@
     weddingDateShort: wd.d + " " + wd.month + " " + wd.y,
     weddingDateLong: wd.weekday + " · " + wd.d + " " + wd.month + " " + wd.y,
     weddingDateDots: pad(wd.d) + "." + pad(wd.m) + "." + wd.y,
+    weddingDateWords: wd.d + " " + wd.month + " " + wd.y,   // the one date style: words, day first ("25 April 2027")
+    weddingMonth: wd.month, weddingDay: String(wd.d),
     weddingD: pad(wd.d), weddingM: pad(wd.m), weddingY: String(wd.y), weddingWeekday: wd.weekday,
     engagementDay: String(ed.d), engagementWeekday: ed.weekday, engagementMonth: ed.month, engagementYear: String(ed.y),
     engagementDateLong: ed.weekday + " · " + ed.d + " " + ed.month + " " + ed.y,
@@ -81,7 +83,7 @@
     brideParentsLine: C.couple && C.couple.brideParents ? "D/o " + C.couple.brideParents : "",
     groomParentsLine: C.couple && C.couple.groomParents ? "S/o " + C.couple.groomParents : "",
     weddingWeekdayShort: wd.weekday.slice(0, 3), weddingMonthShort: wd.month.slice(0, 3),
-    countdownNote: wd.weekday + ", " + wd.d + " " + wd.month + " " + wd.y + " · " + (W.town || ""),
+    countdownNote: wd.weekday + " · " + wd.d + " " + wd.month + " " + wd.y + " · " + (W.town || ""),
   };
 
   function valueFor(key) { return key in derived ? derived[key] : get(key); }
