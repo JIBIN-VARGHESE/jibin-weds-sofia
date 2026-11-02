@@ -1012,9 +1012,9 @@
       }
     }
 
-    // wedding flowers on the pew ends: a white tulle bow, red roses and a trail of ivy
+    // wedding flowers on the pew ends: a white tulle bow and red roses
     for (var pr2 = M.pewFrom; pr2 <= M.pewTo + .01; pr2 += 1) {
-      // a white tulle bow with red roses and a trail of ivy on each pew end
+      // a white tulle bow with red roses on each pew end
       [-1, 1].forEach(function (s) {
         var px = s * (M.pewIn - .06), py = .9, pz = pr2 + .26, tl = mesh("tulle"), rs = mesh("rosebud");
         [-1, 1].forEach(function (k) {
@@ -1024,7 +1024,6 @@
         [[0, 0, .036], [-.035, .04, .028], [-.04, -.035, .028], [.03, .03, .025]].forEach(function (b) {
           lathe(rs, px - s * .02, py + b[0], pz + b[1], [[0, -b[2]], [b[2] * .8, -b[2] * .6], [b[2], 0], [b[2] * .7, b[2] * .7], [0, b[2] * .55]], 8);
         });
-        hang([px - s * .01, py + .02, pz + .03], [-s, 0, 0], .45 + rv() * .25, .1); hang([px - s * .01, py + .02, pz - .04], [-s, 0, 0], .3 + rv() * .2, .1);
       });
     }
     // two tall candle stands before the steps, where the couple will stand
@@ -1068,14 +1067,14 @@
         var z0 = M.firstPier + bay * M.bay;
         // over each arch: a thick mass along the string course, and strands pouring down,
         // longest over the middle of the arch, short where the pier tops are in the way
-        mass([xw, COURSE + .12, z0], [0, 0, 1], M.bay, .7);
-        for (var sn = 0; sn < 20; sn++) {
+        mass([xw, COURSE + .12, z0], [0, 0, 1], M.bay * .7, .6);
+        for (var sn = 0; sn < 14; sn++) {
           var zz = z0 + .1 + rv() * (M.bay - .2), dp = Math.min(Math.abs(zz - z0), Math.abs(zz - z0 - M.bay));
           var len = dp < .6 ? .5 + rv() * 1.6 : .9 + Math.pow(rv(), .7) * 2.7;
           hang([xw, COURSE + .05 - rv() * .2, zz], out, len);
         }
         // a little spilling from the clerestory sill
-        for (var sl = 0; sl < 3; sl++) hang([xw, COURSE + .42, z0 + M.bay / 2 + (rv() - .5) * .8], out, .3 + rv() * .7, .13);
+        for (var sl = 0; sl < 2; sl++) hang([xw, COURSE + .42, z0 + M.bay / 2 + (rv() - .5) * .8], out, .3 + rv() * .7, .13);
         // the outer aisle walls, beside the windows
         [z0 + .3, z0 + M.bay - .3].forEach(function (za) { mass([s * (M.aisleX - .05), 7.1, za - .3], [0, 0, 1], .6, .3); for (var aw = 0; aw < 3; aw++) hang([s * (M.aisleX - .05), 7.05, za + (rv() - .5) * .5], out, 1 + rv() * 3); });
       }
@@ -1089,7 +1088,7 @@
       hang([xp - s * .4, SPRING - .05, zp - .2], [-s * .6, 0, -.8], .4 + rv() * .8, .13);
     });
     // tendrils hanging from the vault's ribs, like the greenery overhead in the reference
-    for (var rb = 1; rb < M.piers; rb++) for (var tn = 0; tn < 10; tn++) {
+    for (var rb = 1; rb < M.piers; rb++) for (var tn = 0; tn < 6; tn++) {
       var xv = (rv() * 2 - 1) * 2.0;
       hang([xv, vaultY(xv) - .1, M.firstPier + rb * M.bay - .05], [-xv * .15, 0, -1], .4 + Math.pow(rv(), 1.3) * 1.5, .14);
     }
