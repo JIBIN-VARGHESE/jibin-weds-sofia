@@ -258,6 +258,7 @@
     el.finale = doc.getElementById("closing");
     el.photo = doc.querySelector(".finale__photo img");
     el.flash = doc.querySelector(".flash");
+    el.bars = doc.querySelector(".cine-bars");
     el.progress = doc.querySelector(".progress span");
     el.mark = doc.querySelector(".topbar__mark");
     el.fin = {
@@ -265,6 +266,7 @@
       date: doc.querySelector(".finale__date"), quote: doc.querySelector(".finale__quote"),
       ref: doc.querySelector(".finale__ref"), candle: doc.querySelector(".finale__candle"),
       share: doc.querySelector(".finale__share"), plan: doc.querySelector(".finale__plan"),
+      flourish: doc.querySelector(".finale__flourish"), frame: doc.querySelector(".finale__frame"),
     };
     STATIONS.forEach(function (st) {
       var node = doc.getElementById(st.id);
@@ -426,6 +428,8 @@
     var fl = ss(16.3, 16.75, s) * (1 - ss(16.8, 17.5, s));   // the flood rises as the last words leave, not while they are read
     if (fl > 0 && !el.flashDrawn) paintFlash();
     setStyle(el.flash, "fl", "opacity", fl.toFixed(3));
+    // cinema bars: they slide in as the church wakes and glide away as the photograph appears
+    if (el.bars) setStyle(el.bars, "cb", "--b", (ss(1.0, 1.8, s) * (1 - ss(16.55, 17.3, s))).toFixed(3));
 
     /* 6 · together */
     setStyle(el.finale, "fn", "visibility", finaleOn ? "visible" : "hidden");
@@ -441,6 +445,8 @@
       var wr = ss(17.25, 18.0, s);
       setStyle(el.fin.names, "fnn", "--write", wr.toFixed(4));
       setStyle(el.fin.full, "ff", "opacity", ss(17.9, 18.25, s).toFixed(3));
+      if (el.fin.flourish) setStyle(el.fin.flourish, "flo", "--flo", ss(17.7, 18.3, s).toFixed(3));
+      if (el.fin.frame) setStyle(el.fin.frame, "frm", "opacity", ss(17.1, 17.9, s).toFixed(3));
       setStyle(el.fin.date, "fd", "opacity", ss(18.05, 18.4, s).toFixed(3));
       setStyle(el.fin.quote, "fq", "opacity", ss(18.45, 18.9, s).toFixed(3));
       setStyle(el.fin.ref, "fr", "opacity", ss(18.7, 19.0, s).toFixed(3));
@@ -456,7 +462,7 @@
     c.width = Math.max(1, Math.round(c.clientWidth / 2)); c.height = Math.max(1, Math.round(c.clientHeight / 2));
     var g = c.getContext("2d"), w = c.width, h = c.height;
     var rg = g.createRadialGradient(w / 2, h * .3, 0, w / 2, h * .3, Math.max(w, h) * .9);
-    rg.addColorStop(0, "#FFFDF7"); rg.addColorStop(.45, "#FFF2D8"); rg.addColorStop(1, "#F0CE98");
+    rg.addColorStop(0, "#FFF7E2"); rg.addColorStop(.4, "#F7D99C"); rg.addColorStop(1, "#C9963F");   // a golden light, not a white one
     g.fillStyle = rg; g.fillRect(0, 0, w, h);
     el.flashDrawn = true;
   }

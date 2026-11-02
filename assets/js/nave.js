@@ -96,7 +96,7 @@
     "  if (tx.a < .4) discard;",
     "  vec3 base = uAlb.rgb * tx.rgb;",
     // soft light from above, a warm bounce from below, and the windows' daylight
-    "  float hy = 1. - .45 * smoothstep(2., 13., vP.y);",
+    "  float hy = 1. - .62 * smoothstep(1.4, 10., vP.y);",
   "  vec3 lit = (uAmb * (.66 + .34 * n.y) + uAmb * vec3(.5, .34, .22) * max(-n.y, 0.) * .6) * ao * hy;",
     "  lit += uSunC * (max(dot(n, uSunD), 0.) * .8 + .2) * ao;",
     "  vec3 spec = vec3(0.);",
@@ -178,6 +178,36 @@
     "  c += texture2D(uT, vUV + vec2(0., uH.y * 2.)) + texture2D(uT, vUV + vec2(0., -uH.y * 2.));",
     "  c += (texture2D(uT, vUV + uH) + texture2D(uT, vUV - uH) + texture2D(uT, vUV + vec2(uH.x, -uH.y)) + texture2D(uT, vUV - vec2(uH.x, -uH.y))) * 2.;",
     "  gl_FragColor = c / 12.;",
+    "}"].join("\n");
+  // the glow: only what is brighter than the stone passes, softly kneed
+  var FS_BRIGHT = [
+    "precision mediump float;",
+    "uniform sampler2D uT; uniform vec2 uH; varying vec2 vUV;",
+    "void main(){",
+    "  vec3 c = (texture2D(uT, vUV).rgb * 4. + texture2D(uT, vUV - uH).rgb + texture2D(uT, vUV + uH).rgb + texture2D(uT, vUV + vec2(uH.x, -uH.y)).rgb + texture2D(uT, vUV - vec2(uH.x, -uH.y)).rgb) / 8.;",
+    "  float l = dot(c, vec3(.2126, .7152, .0722)), k = smoothstep(.86, 1., l);",
+    "  gl_FragColor = vec4(c * k, 1.);",
+    "}"].join("\n");
+  // the film: glow added back, a warm grade (deep shadows, golden highlights),
+  // a gentle vignette and a whisper of grain
+  var FS_FILM = [
+    "precision mediump float;",
+    "uniform sampler2D uT, uU, uV; uniform vec2 uR; uniform float uS, uG;",
+    "varying vec2 vUV;",
+    "void main(){",
+    "  vec3 c = texture2D(uT, vUV).rgb;",
+    "  vec3 g = texture2D(uU, vUV).rgb * .45 + texture2D(uV, vUV).rgb * .75;",
+    "  c += g * vec3(1., .82, .58) * uG;",
+    "  c = (1. - exp(-c * 1.5)) / (1. - exp(-1.5));",                                                 // a soft shoulder: glow never clips or flips
+    "  float l = dot(c, vec3(.2126, .7152, .0722));",
+    "  c = mix(c, c * vec3(1.06, .98, .86), smoothstep(.35, .9, l));",          // warm highlights
+    "  c = mix(c * vec3(.92, .86, .84), c, smoothstep(.0, .35, l));",            // deeper, warm-brown shadows
+    "  c = clamp(c, 0., 1.); c = c * c * (3. - 2. * c) * .45 + c * .55;",                              // a soft S-curve
+    "  vec2 q = vUV - .5; q.x *= uR.x / uR.y;",
+    "  c *= 1. - .42 * smoothstep(.35, 1.0, length(q));",                        // vignette
+    "  float n = fract(sin(dot(vUV * uR + uS, vec2(12.9898, 78.233))) * 43758.5453);",
+    "  c += (n - .5) * .035;",                                                    // grain
+    "  gl_FragColor = vec4(c, 1.);",
     "}"].join("\n");
   // the soft frame over the sharp one: a little soft (uT) or softer (uU),
   // so focus deepens gradually rather than one blur fading in over another
@@ -847,11 +877,11 @@
       lathe(gold, x, gy, zTable + .5, [[0, 0], [.07, 0], [.07, .02], [.03, .05], [.02, hgt * .5], [.035, hgt * .55], [.015, hgt * .6], [.015, hgt - .03], [.04, hgt - .02], [.04, hgt]], 12);
       lathe(wax, x, gy + hgt, zTable + .5, [[.02, 0], [.02, .22], [0, .23]], 8);
       lights.push({ kind: "flame", p: [x, gy + hgt + .27, zTable + .48], s: .07, c: [1, .9, .7], a: 1, ph: Math.random() * 9, candle: zTable });
-      lights.push({ kind: "glow", p: [x, gy + hgt + .27, zTable + .47], s: .9, c: [1, .62, .3], a: .25, ph: Math.random() * 9, candle: zTable });
+      lights.push({ kind: "glow", p: [x, gy + hgt + .27, zTable + .47], s: .6, c: [1, .62, .3], a: .16, ph: Math.random() * 9, candle: zTable });
     });
     box(gold, -.03, gy, zTable + .48, .03, gy + .92, zTable + .54);
     box(gold, -.21, gy + .62, zTable + .48, .21, gy + .68, zTable + .54);
-    points.push({ p: [0, gy + .7, zTable - .3], c: [1, .66, .36], i: 1.4, k: .35, candle: zTable });
+    points.push({ p: [0, gy + .7, zTable - .3], c: [1, .66, .36], i: .95, k: .35, candle: zTable });
 
     // white linen over the altar, falling a little over the frontal's top
     box(mesh("linen"), -1.42, platY + 1.08, zTable - .07, 1.42, platY + 1.095, zTable + .69);
@@ -1142,9 +1172,9 @@
     });
 
     // the sanctuary is the brightest place; the rose window glows into it
-    points.push({ p: [0, 4.2, 25.2], c: [1, .74, .48], i: 2.4, k: .06, still: true });
+    points.push({ p: [0, 4.2, 25.2], c: [1, .72, .45], i: 1.05, k: .08, still: true });
     points.push({ p: [0, RC[1], ZE - .6], c: [1, .7, .45], i: 1.2, k: .12, still: true, rose: true });
-    points.push({ p: [0, 2.4, ZE - 2.2], c: [1, .72, .42], i: .9, k: .5, candle: ZE - 2 });
+    points.push({ p: [0, 2.4, ZE - 2.2], c: [1, .72, .42], i: .45, k: .5, candle: ZE - 2 });
 
     // light: daylight beams from the left clerestory and aisle windows, and soft halos at the glass
     for (var bb = 0; bb < M.piers - 1; bb++) {
@@ -1158,8 +1188,8 @@
         lights.push({ kind: "glow", p: [s * (X + .1), COURSE + 1.2, zc2], s: 2.2, c: [1, .8, .55], a: .05, still: true, win: true });
       });
     }
-    lights.push({ kind: "glow", p: [0, RC[1], ZE - .1], s: 7.5, c: [1, .66, .36], a: .12, ph: 0, still: true, fog: .01, rose: true });
-    lights.push({ kind: "pool", p: [0, platY + .01, 25.6], s: 6, c: [1, .7, .4], a: .1, ph: 0, still: true });
+    lights.push({ kind: "glow", p: [0, RC[1], ZE - .1], s: 7.5, c: [1, .66, .36], a: .05, ph: 0, still: true, fog: .01, rose: true });
+    lights.push({ kind: "pool", p: [0, platY + .01, 25.6], s: 6, c: [1, .7, .4], a: .05, ph: 0, still: true });
 
     // dust: random points in a box ahead of the camera, wrapped as we walk
     moteData = new Float32Array(NM * 4);
@@ -1183,7 +1213,7 @@
     ["niche", [1, 1, 1], "niche", 2, 1, .2, 20, .25, 0],
     ["frontal", [1, 1, 1], "frontal", 2, 1, .15, 16, .05, 0],
     ["gilt", [1.05, .8, .48], "stone", 1, .5, .7, 26, .03, .6],
-    ["linen", [1.1, 1.08, 1.02], "white", 0, 1, .15, 12, .12, 0],
+    ["linen", [.98, .96, .92], "white", 0, 1, .15, 12, .03, 0],
     ["statue", [1.12, 1.09, 1.04], "marble", 1, 1 / 1.2, .35, 40, .04, 0],
     ["tulle", [1.12, 1.12, 1.1], "white", 0, 1, .25, 12, .18, 0],
     ["rosebud", [.68, .07, .1], "white", 0, 1, .3, 18, .04, 0],
@@ -1262,12 +1292,12 @@
       LC[q * 3] = l0 ? l0.c[0] * l0.i * lit0 : 0; LC[q * 3 + 1] = l0 ? l0.c[1] * l0.i * lit0 : 0; LC[q * 3 + 2] = l0 ? l0.c[2] * l0.i * lit0 : 0;
     }
     gl.uniform4fv(UB.LP, LP); gl.uniform3fv(UB.LC, LC);
-    var amb = .035 + .085 * win;
+    var amb = .016 + .045 * win;
     gl.uniform3f(UB.Amb, amb * 1.0, amb * .84, amb * .64);
     gl.uniform3f(UB.SunD, .48, .74, .2);
-    gl.uniform3f(UB.SunC, .1 * win, .075 * win, .05 * win);
-    gl.uniform3f(UB.Haze, .07, .05, .036);
-    gl.uniform1f(UB.Fog, .022);
+    gl.uniform3f(UB.SunC, .065 * win, .048 * win, .032 * win);
+    gl.uniform3f(UB.Haze, .085, .058, .036);
+    gl.uniform1f(UB.Fog, .03);
     gl.uniform1f(UB.Expo, P.expo);
     var grade = BRIGHT * (1 - DIM * P.dim);
     gl.uniform2f(UB.Grade, SAT + (1 - SAT) * P.bloom, grade + (1 - grade) * P.bloom);
@@ -1358,15 +1388,52 @@
     /* focus: the church goes soft behind the words in front of it. Skipped
        only on a device already at its lowest resolution and still struggling. */
     if (post && P.focus > .003 && slowFrames < 4 && sizePost()) soften(Math.min(1, P.focus));
+    /* the film: glow around every flame and window, a warm grade, vignette and grain */
+    if (post && slowFrames < 4 && sizePost()) film(time);
+  }
+  function film(time) {
+    var L = post.lv;
+    gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.BLEND);
+    gl.bindTexture(gl.TEXTURE_2D, post.copy.t);
+    gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, W, H);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    function pass(pr, src, dst, spread) {
+      var w = dst ? dst.w : W, h = dst ? dst.h : H;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, dst ? dst.fb : null);
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(pr.p);
+      gl.enableVertexAttribArray(pr.aQ);
+      gl.vertexAttribPointer(pr.aQ, 2, gl.FLOAT, false, 0, 0);
+      gl.bindTexture(gl.TEXTURE_2D, src.t);
+      gl.uniform1i(pr.T, 0);
+      if (pr.H) gl.uniform2f(pr.H, spread * .5 / w, spread * .5 / h);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    pass(post.bright, post.copy, L[0], 1);
+    pass(post.down, L[0], L[1], 1.5); pass(post.down, L[1], L[2], 2); pass(post.up, L[2], L[3], 2);
+    var f = post.film;
+    gl.useProgram(f.p);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, L[1].t);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, L[3].t);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(f.U, 1); gl.uniform1i(f.V, 2);
+    gl.uniform2f(f.R, W, H); gl.uniform1f(f.S, (time % 997) * .37); gl.uniform1f(f.G, 1.1);
+    pass(f, post.copy, null, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0);
+    gl.disableVertexAttribArray(f.aQ);
+    gl.depthMask(true);
+    boundTex = null;
   }
 
   /* ------------------------------------------------------------- focus */
   function setupPost() {
-    try { post = { down: compile(VS_F, FS_DOWN), up: compile(VS_F, FS_UP), comp: compile(VS_F, FS_COMP), w: 0, h: 0, lv: [] }; }
+    try { post = { down: compile(VS_F, FS_DOWN), up: compile(VS_F, FS_UP), comp: compile(VS_F, FS_COMP), bright: compile(VS_F, FS_BRIGHT), film: compile(VS_F, FS_FILM), w: 0, h: 0, lv: [] }; }
     catch (e) { post = null; return; }
-    ["down", "up", "comp"].forEach(function (n) {
+    ["down", "up", "comp", "bright", "film"].forEach(function (n) {
       var p = post[n];
-      post[n] = { p: p, aQ: gl.getAttribLocation(p, "aQ"), T: gl.getUniformLocation(p, "uT"), U: gl.getUniformLocation(p, "uU"), H: gl.getUniformLocation(p, "uH"), A: gl.getUniformLocation(p, "uA"), M: gl.getUniformLocation(p, "uM") };
+      post[n] = { p: p, aQ: gl.getAttribLocation(p, "aQ"), T: gl.getUniformLocation(p, "uT"), U: gl.getUniformLocation(p, "uU"), H: gl.getUniformLocation(p, "uH"), A: gl.getUniformLocation(p, "uA"), M: gl.getUniformLocation(p, "uM"),
+        V: gl.getUniformLocation(p, "uV"), R: gl.getUniformLocation(p, "uR"), S: gl.getUniformLocation(p, "uS"), G: gl.getUniformLocation(p, "uG") };
     });
   }
   function plainTex(w, h, fmt) {

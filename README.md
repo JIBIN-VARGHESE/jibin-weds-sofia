@@ -41,7 +41,7 @@ The page is one continuous scene, run by `assets/js/journey.js`. Scrolling doesn
 3. **Save the Date** hangs in the air of the aisle; you walk through it.
 4. **Stations:** invitation, engagement, ceremony, reception, countdown, RSVP. Each card stands in the aisle. As you reach it, the camera turns to it, it comes to the centre and holds while you read, then you walk on past. The verse appears between the invitation and the engagement, under the brightening rose window.
 5. **The light:** at the altar the rose window swells until light fills the screen ("Your presence would make our celebration complete").
-6. **Together:** out of the light, the couple photo, developing like a print: overexposed at first, so the two of you appear first against the glow. It drifts slowly closer, gold dust floats, the names write themselves, the verse and one candle appear.
+6. **Together:** out of a golden light, the couple photo in the church's gold (a warm wash and a soft vignette), developing like a print: overexposed at first, so the two of you appear first against the glow. It drifts slowly closer, gold dust floats, the names write themselves, the verse and one candle appear.
 
 **Chapters.** The page doesn't scroll. Guests tap **Continue** (or swipe once) to move to the next chapter, and a small **Back** returns; the journey then plays on its own: the camera glides, turns to the next card, the card settles and its words reveal. The opening (photo → church → Save the Date → invitation) and the ending play by themselves; the opening waits until the names, date and place are fully shown. The opening plays by itself (about 15 seconds from the seal to the invitation, most of it the church slowly lighting up; faster for returning guests): a line at the bottom ("Sit back — or tap to hurry it along") says so. A tap or swipe while the journey moves, the opening included, hurries it to the next stop. Save the Date and the verse hang in the aisle; each rests a moment and the camera walks through it.
 
@@ -59,6 +59,8 @@ Keep the stations and the camera points in step.
 - `PUSH`: how much closer the opening photo drifts while the names are read, and over how many seconds (one transform with the zoom as it fades).
 - **Test switch:** add `?off=` to the address to turn effects off one by one and compare on a phone: `?off=focus`, `?off=float`, `?off=lean`, `?off=push` (the opening photo's slow push), several at once (`?off=float,push`) or `?off=all`. Without it, everything is on.
 
+
+**The film look.** After the church is drawn, `nave.js` runs one more full-screen pass (`film()`): a glow around everything brighter than the stone (flames, crystals, the windows), a warm grade, a gentle vignette and fine grain. Its strength is `uG` in `film()`; the glow threshold is in `FS_BRIGHT`. A device that is already struggling skips it. Thin cinema bars (`.cine-bars`) frame the walk; they slide in as the church wakes and glide away as the photograph appears. At the end the names are in gold foil, a flourish draws itself in under them, and a fine double gold frame closes the picture.
 
 **Reduce motion / no JavaScript:** the same scenes stack as a calm page over a still, lit church.
 

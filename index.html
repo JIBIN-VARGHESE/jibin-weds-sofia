@@ -17,7 +17,7 @@
   <meta property="og:title" content="Jibin Varghese &amp; Sofia John · 25 April 2027">
   <meta property="og:description" content="With the grace of God, we invite you to celebrate our wedding in Kozhikode, Kerala.">
   <meta property="og:url" content="https://jibin-varghese.github.io/jibin-weds-sofia/">
-  <meta property="og:image" content="https://jibin-varghese.github.io/jibin-weds-sofia/assets/images/og-image.jpg?v=6">
+  <meta property="og:image" content="https://jibin-varghese.github.io/jibin-weds-sofia/assets/images/og-image.jpg?v=7">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
@@ -34,14 +34,14 @@
   <link rel="preload" href="assets/fonts/jost-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
   <!-- ?v=… makes every browser fetch fresh files after an update (phones can keep
        old copies for days). Change the number on every update, here and in config.js. -->
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261102f">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261102g">
 
   <!-- the journey layout from the very first paint (main.js falls back to the still page if it can't run) -->
   <script>(function (r) { r.classList.replace('no-js', 'js'); if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) r.classList.add('journey'); })(document.documentElement);</script>
   <script src="config.js?v=20261024m" defer></script>
   <script src="assets/js/rsvp.js?v=20261024m" defer></script>
-  <script src="assets/js/nave.js?v=20261102f" defer></script>
-  <script src="assets/js/journey.js?v=20261102g" defer></script>
+  <script src="assets/js/nave.js?v=20261102g" defer></script>
+  <script src="assets/js/journey.js?v=20261102h" defer></script>
   <script src="assets/js/main.js?v=20261102c" defer></script>
 </head>
 <body>
@@ -160,6 +160,9 @@
 <!-- ============================================================ THE JOURNEY
      Each scene is placed and timed by assets/js/journey.js. Without
      JavaScript (or with "reduce motion") they simply stack as a page. -->
+<!-- thin cinema bars that frame the walk through the church (journey.js slides them in and out) -->
+<div class="cine-bars" aria-hidden="true"><i></i><i></i></div>
+
 <main class="scenes">
 
   <!-- 2 · the church wakes -->
@@ -297,10 +300,19 @@
   <section class="scene scene--finale" id="closing" aria-labelledby="close-names">
     <div class="finale__photo"><img data-art="closingPhoto" data-defer alt="A bride and groom embracing beneath a long arched corridor" decoding="async"></div>
     <canvas class="finale__dust" aria-hidden="true"></canvas>
+    <div class="finale__frame" aria-hidden="true"></div>
     <div class="finale__text">
       <h2 class="finale__names" id="close-names">
         <span data-bind="couple.groom">Jibin</span> <em>&amp;</em> <span data-bind="couple.bride">Sofia</span>
       </h2>
+      <svg class="finale__flourish" viewBox="0 0 240 24" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path pathLength="1" stroke-width="1" d="M6 12H92M148 12H234"/>
+          <path pathLength="1" stroke-width="1" d="M92 12c6 0 9-6 15-6s7 6 13 6M148 12c-6 0-9 6-15 6s-7-6-13-6"/>
+          <path pathLength="1" stroke-width="1.2" d="M120 3l7 9-7 9-7-9z"/>
+        </g>
+        <circle cx="6" cy="12" r="1.6" fill="currentColor"/><circle cx="234" cy="12" r="1.6" fill="currentColor"/>
+      </svg>
       <p class="finale__full"><span data-bind="couple.groomFull">Jibin Varghese</span> &amp; <span data-bind="couple.brideFull">Sofia John</span></p>
       <p class="finale__date" data-bind="weddingDateWords">25 April 2027</p>
       <p class="finale__quote" data-bind="closing.signoff"></p>

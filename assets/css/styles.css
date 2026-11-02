@@ -203,8 +203,8 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 .nave > * { position: absolute; }
 .nave__gl { inset: 0; width: 100%; height: 100%; display: block; }
 .nave--still { background: var(--nave-black); }
-.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261102f") 50% 40% / cover no-repeat; }
-@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261102f"); } }
+.nave--still::after { content: ""; position: absolute; inset: 0; background: url("../images/nave/still-portrait.webp?v=20261102g") 50% 40% / cover no-repeat; }
+@media (min-aspect-ratio: 1/1) { .nave--still::after { background-image: url("../images/nave/still-landscape.webp?v=20261102g"); } }
 .nave__vignette { inset: 0; z-index: 5; background: radial-gradient(130% 95% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
 
 /* ======================================================= HERO (film) */
@@ -708,3 +708,38 @@ html:not(.journey) .nave { opacity: 1; }
 .still .music { background: rgba(14, 10, 7, .92); box-shadow: 0 4px 16px rgba(0, 0, 0, .45); }
 
 .journey .scroll-cue { display: none; }
+
+/* ============================================== cinema bars (journey only) */
+.cine-bars { display: none; }
+.journey .cine-bars { display: block; position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.cine-bars i { position: absolute; left: 0; right: 0; top: 0; height: 5.5vh; height: 5.5svh; background: var(--nave-black);
+  transform: translateY(calc(-100% * (1 - var(--b, 0)))); }
+.cine-bars i + i { top: auto; bottom: 0; transform: translateY(calc(100% * (1 - var(--b, 0)))); }
+
+/* ======================================= the ending: a golden curtain call */
+/* the photograph in the church's gold: a warm wash and a soft vignette */
+.finale__photo::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(240, 184, 102, .22), rgba(196, 136, 58, .26)); mix-blend-mode: soft-light; }
+.finale__photo::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(125% 95% at 50% 46%, rgba(0, 0, 0, 0) 52%, rgba(22, 12, 4, .6) 100%); }
+/* the names in gold foil, a slow light passing across them */
+.finale__names { color: var(--gold); text-shadow: none;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, .7)) drop-shadow(0 0 20px rgba(240, 184, 102, .3)); }
+.finale__names span {
+  background: linear-gradient(105deg, #A8772C 0%, #E3B866 28%, #FFF1CC 45%, #F3D08A 55%, #B8873A 78%, #8E6222 100%) 100% 0 / 240% 100% no-repeat;
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  animation: foil-names 7s ease-in-out 1s infinite; }
+@keyframes foil-names { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0% 0; } }
+/* a flourish under the names, drawn in after them */
+.finale__flourish { display: block; width: min(62%, 15rem); height: auto; color: var(--gold); margin: -.15rem 0 .1rem;
+  filter: drop-shadow(0 0 6px rgba(240, 184, 102, .45)); }
+.finale__flourish path { stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--flo, 1)); }
+.finale__flourish circle { opacity: var(--flo, 1); }
+/* a fine double gold frame with corner flourishes, like the cards: the ending as a keepsake */
+.finale__frame { position: absolute; inset: 7px; z-index: 3; pointer-events: none; border: 1px solid rgba(217, 174, 98, .55); }
+.finale__frame::before { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(217, 174, 98, .25); }
+.finale__frame::after { content: ""; position: absolute; inset: 9px;
+  background: linear-gradient(135deg, var(--foil-dark), var(--seal-hi) 35%, var(--foil-light) 55%, var(--seal-hi) 75%, var(--foil-dark));
+  /* flourishes in the bottom corners only: the Back and Music buttons sit in the top ones */
+  -webkit-mask: url("../icons/card-corner-bl.svg") 0 100% / 44px 44px no-repeat, url("../icons/card-corner-br.svg") 100% 100% / 44px 44px no-repeat;
+          mask: url("../icons/card-corner-bl.svg") 0 100% / 44px 44px no-repeat, url("../icons/card-corner-br.svg") 100% 100% / 44px 44px no-repeat; }
