@@ -535,6 +535,8 @@ h1, h2, h3, p, .invite__lines p, .verse__text { text-wrap: balance; }
 @keyframes beckon { 0%, 100% { box-shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 0 0 0 rgba(240, 184, 102, 0); } 50% { box-shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 0 22px 3px rgba(240, 184, 102, .5); } }
 .back-hint { left: max(.9rem, env(safe-area-inset-left)); gap: .4rem; padding: .7rem .5rem; background: none;
   font-family: var(--sans); font-weight: 500; font-size: .76rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(243, 232, 213, .85); text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
+.back-hint.is-top { bottom: auto; top: max(.9rem, env(safe-area-inset-top)); height: 38px; padding: 0 .9rem; border-radius: 999px;
+  background: rgba(14, 10, 7, .5); border: 1px solid rgba(217, 174, 98, .4); text-shadow: none; }
 .back-hint i { width: 6px; height: 6px; border-left: 1.3px solid currentColor; border-bottom: 1.3px solid currentColor; transform: rotate(45deg); }
 /* the wax seal under the names: "Open the invitation". Its tap starts the
    music and the journey. It breathes softly until opened, then presses in,
@@ -675,5 +677,7 @@ html:not(.journey) .nave { opacity: 1; }
   .hero__content { opacity: 1; }
 }
 .still .topbar__mark { display: none; }
+/* the calm page scrolls cards under the music button: give it a solid ground so it never sits on their words */
+.still .music { background: rgba(14, 10, 7, .92); box-shadow: 0 4px 16px rgba(0, 0, 0, .45); }
 
 .journey .scroll-cue { display: none; }

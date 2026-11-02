@@ -361,7 +361,11 @@
     if (el.hint) {
       var showHint = resting && !intro && chapter > 0 && chapter < STOPS.length - 1;
       el.hint.classList.toggle("is-on", showHint);
-      if (el.back) el.back.classList.toggle("is-on", resting && !intro && chapter > 1);
+      if (el.back) {
+        el.back.classList.toggle("is-on", resting && !intro && chapter > 1);
+        // at the end, Back moves up beside the music button: below, it would sit on "Share the invitation"
+        el.back.classList.toggle("is-top", s > 16.72);
+      }
     }
 
     /* the church: camera, turn toward the card being read, light */
