@@ -28,7 +28,8 @@
   // how fast the timeline plays (units per second) in each stretch
   function rate(x) {
     if (x < 1.1) return .5;             // the opening photo fades
-    if (x < 2.35) return .55;           // the church wakes
+    if (x < 2.35) return .22;           // the church wakes: candles light one by one down the aisle (~5.7 s, slow enough to watch)
+    if (x < 2.95) return .3;            // ...then the windows brighten (~2 s)
     if (x > 2.95 && x < 3.2) return .15;   // Save the Date rests in the centre (~1.7 s), then you walk through it
     if (x < 3.9) return .42;            // Save the Date settles, and you walk through it
     if (x > 5.6 && x < 6.25) return .3;    // the verse appears and its words light up
