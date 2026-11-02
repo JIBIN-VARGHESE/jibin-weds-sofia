@@ -1,5 +1,5 @@
 /* =============================================================================
-   Sofia & Jibin — main script
+   Jibin & Sofia — main script
    1. Content binding from config.js
    2. The journey (assets/js/journey.js), or a calm static page
    4. Countdown (Asia/Kolkata, IST = UTC+05:30)
@@ -135,7 +135,7 @@
       var v = scenes[src.getAttribute("data-scene-srcset")];
       if (v) src.srcset = v; else src.remove();
     });
-    var names = (C.couple ? (C.couple.brideFull || C.couple.bride) + " & " + (C.couple.groomFull || C.couple.groom) : "") + " · " + derived.weddingDateShort;
+    var names = (C.couple ? (C.couple.groomFull || C.couple.groom) + " & " + (C.couple.brideFull || C.couple.bride) : "") + " · " + derived.weddingDateShort;
     if (C.couple) doc.title = names;
   }
 
@@ -300,7 +300,7 @@
   // open an .ics file straight into Calendar; everyone else gets Google Calendar.
   function initCalendar() {
     var couple = C.couple || {};
-    var who = (couple.bride || "") + " & " + (couple.groom || "");
+    var who = (couple.groom || "") + " & " + (couple.bride || "");
     var events = {
       ceremony: { title: who + " · Holy Matrimony", time: W.ceremonyTime, hours: 2, place: [W.churchName, W.churchAddress || W.town, W.region].filter(Boolean).join(", "), link: W.churchMapsUrl },
       reception: { title: who + " · Reception", time: W.receptionTime, hours: 3, place: [W.receptionVenue, W.receptionAddress || W.town, W.region].filter(Boolean).join(", "), link: W.receptionMapsUrl || W.churchMapsUrl },
@@ -308,7 +308,7 @@
     function stamp(ms) { return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }   // UTC, 20270425T090000Z
     function ics(ev, start, end) {
       var esc = function (t) { return String(t || "").replace(/([,;\\])/g, "\\$1"); };
-      return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Sofia and Jibin//Wedding//EN", "BEGIN:VEVENT",
+      return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Jibin and Sofia//Wedding//EN", "BEGIN:VEVENT",
         "UID:" + start + "-" + ev.time + "@jibin-weds-sofia", "DTSTAMP:" + stamp(Date.now()),
         "DTSTART:" + stamp(start), "DTEND:" + stamp(end), "SUMMARY:" + esc(ev.title), "LOCATION:" + esc(ev.place),
         "DESCRIPTION:" + esc((ev.link || "") + " " + location.href.split("#")[0]),

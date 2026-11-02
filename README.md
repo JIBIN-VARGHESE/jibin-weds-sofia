@@ -1,4 +1,4 @@
-# Sofia John & Jibin Varghese — Wedding Microsite
+# Jibin Varghese & Sofia John — Wedding Microsite
 
 A cinematic, scroll-told wedding invitation. Static HTML, CSS and vanilla JavaScript, with no build step, no framework, no backend. It runs on GitHub Pages for free.
 
@@ -65,11 +65,11 @@ Keep the stations and the camera points in step.
 | Layer | File | Notes |
 |---|---|---|
 | Opening picture | `assets/images/hero/hero-portrait.webp`, `hero-landscape.webp` | the top of your collage, fading into the dark where the names sit; on wide screens it stands over a blurred copy of itself |
-| The church | `assets/js/nave.js` | real 3D, built and painted in code on load: fluted columns with leafy capitals, pointed arcades, a rib vault (starry over the sanctuary), stained-glass lancets with saints (halo, robe and cloak, holding a cross, a lily or a book; three designs alternating) and a rose window, panelled pews, four bronze chandeliers, lanterns, marble steps, the altar with its crimson frontal and candles, a reredos with starry niches. Nothing to download |
-| Still church (no graphics chip, or "reduce motion") | `assets/images/nave/still-portrait.webp`, `still-landscape.webp` | renders of the same church |
+| The church | `assets/js/nave.js` | real 3D, built and painted in code on load: fluted columns with leafy capitals, pointed arcades, a rib vault (starry over the sanctuary), stained-glass lancets with saints (halo, robe and cloak, holding a cross, a lily or a book; three designs alternating) and a rose window, panelled pews, four bronze chandeliers, lanterns, marble steps, the altar with its crimson frontal, white linen and candles; behind it a gilded retable of five painted saints under pointed arches, and a tall gilded cross standing against the rose window; a red-and-gold sanctuary veil drawn back to either side; saint icons on the pillars, turned toward the aisle (so phones see saints too, not only the wide side windows); white and blush flowers on every pew end and in two urns by the steps. Nothing to download |
+| Still church (no graphics chip, or "reduce motion") | `assets/images/nave/still-portrait.webp`, `still-landscape.webp` | renders of the same church (re-render them after changing `nave.js`) |
 | The couple (finale) | `assets/images/closing/couple-arches.webp` | your AI-generated photo |
 
-**Changing the church.** Its plan is at the top of `nave.js` (`M`: pier spacing, nave width, pews, altar) and in `build()`; the light in `render()` (`amb` for the overall level, `points` for the chandeliers, lanterns and sanctuary); the stone, marble, wood, carpet and glass are painted by the `…Tex()` functions. About 110k triangles and ~20 draw calls for the building, so phones keep up; if a phone struggles, the church is drawn at a lower resolution automatically.
+**Changing the church.** Its plan is at the top of `nave.js` (`M`: pier spacing, nave width, pews, altar) and in `build()`; the light in `render()` (`amb` for the overall level, `points` for the chandeliers, lanterns and sanctuary); the stone, marble, wood, carpet and glass are painted by the `…Tex()` functions. About 130k triangles and ~30 draw calls for the building, so phones keep up; if a phone struggles, the church is drawn at a lower resolution automatically.
 
 **Credits.** Both photos are your own, so no credit line is needed.
 

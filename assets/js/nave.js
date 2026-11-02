@@ -375,7 +375,7 @@
   }
   // a saint in the glass: halo, robe and mantle, holding a cross, a lily or a
   // book, on a deep-blue niche; drawn in metres so it never stretches
-  function saint(c, wm, hm, sm, variant) {
+  function saint(c, wm, hm, sm, variant, icon) {
     var x = c.getContext("2d"), W = c.width, H = c.height;
     x.save();
     x.globalCompositeOperation = "source-atop";
@@ -385,7 +385,7 @@
     var ROBE = [["#981c24", "#24408f"], ["#24408f", "#981c24"], ["#1f6a46", "#c99436"]][variant % 3];
     function shape(fill, draw) { x.beginPath(); draw(); x.fillStyle = fill; x.fill(); x.lineWidth = lw; x.strokeStyle = LEAD; x.stroke(); }
     // the niche behind the figure
-    shape("#1f2c66", function () { x.moveTo(cx - bw - .05, y0 + .98 * f); x.lineTo(cx - bw - .05, y0 + .2 * f); x.quadraticCurveTo(cx - bw - .05, y0 - .04 * f, cx, y0 - .06 * f); x.quadraticCurveTo(cx + bw + .05, y0 - .04 * f, cx + bw + .05, y0 + .2 * f); x.lineTo(cx + bw + .05, y0 + .98 * f); x.closePath(); });
+    if (!icon) shape("#1f2c66", function () { x.moveTo(cx - bw - .05, y0 + .98 * f); x.lineTo(cx - bw - .05, y0 + .2 * f); x.quadraticCurveTo(cx - bw - .05, y0 - .04 * f, cx, y0 - .06 * f); x.quadraticCurveTo(cx + bw + .05, y0 - .04 * f, cx + bw + .05, y0 + .2 * f); x.lineTo(cx + bw + .05, y0 + .98 * f); x.closePath(); });
     // halo
     shape("#d9a63e", function () { x.arc(cx, y0 + .1 * f, .095 * f, 0, Math.PI * 2); });
     x.beginPath(); x.arc(cx, y0 + .1 * f, .072 * f, 0, Math.PI * 2); x.lineWidth = lw * .6; x.stroke();
@@ -489,6 +489,39 @@
         var dam = .88 + .12 * Math.sin(x * .35) * Math.sin(y * .35) + .08 * vn(n, x / w, y / h);
         if (e < 8 || (e > 11 && e < 13) || cross) put(d, o, 214, 162, 74);
         else put(d, o, 112 * dam, 16 * dam, 22 * dam);
+      }
+    });
+  }
+  // an icon for the retable and the pillars: a saint on burnished gold leaf
+  // under a pointed arch, with a dark red border (painted like the glass saints)
+  function iconTex(wm, hm, variant) {
+    var n = lattice(16), sm = hm - pointed(0, wm, 0, 1.6)(wm / 2), R = wm * .8;
+    var c = canvas2(128, 512, function (d, w, h) {   // power-of-two sizes: WebGL 1 mipmaps nothing else
+      for (var py = 0; py < h; py++) for (var px = 0; px < w; px++) {
+        var x = (px + .5) / w * wm, y = (1 - (py + .5) / h) * hm, o = (py * w + px) * 4;
+        var dl = Math.hypot(x - R, y - sm), dr = Math.hypot(x - (wm - R), y - sm);
+        if (!(y <= sm || (dl <= R && dr <= R))) { put(d, o, 0, 0, 0, 0); continue; }
+        var edge = Math.min(x, wm - x, y, y > sm ? Math.min(R - dl, R - dr) : 9);
+        var g = .82 + .18 * vn(n, x / wm, y / hm) + .06 * Math.sin(x * 90 + y * 40);
+        if (edge < .035) put(d, o, 96, 22, 18);
+        else if (edge < .05) put(d, o, 236, 196, 120);
+        else put(d, o, 214 * g, 166 * g, 84 * g);
+      }
+    });
+    saint(c, wm, hm, sm, variant, true);
+    return c;
+  }
+  // the sanctuary veil: crimson velvet with soft damask, a gold band down the
+  // inner edge and along the hem
+  function veilTex() {
+    var n = lattice(32);
+    return canvas2(128, 256, function (d, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var o = (y * w + x) * 4, u = x / w, v = 1 - y / h;
+        var dam = .86 + .1 * Math.sin(x * .5) * Math.sin(y * .25) + .1 * vn(n, u, v);
+        if (u > .9 || v < .045) { var g = .85 + .15 * Math.sin(y * .9 + x * .4); put(d, o, 222 * g, 172 * g, 86 * g); }
+        else if (u > .875 || (v > .05 && v < .06)) put(d, o, 60, 10, 12);
+        else put(d, o, 128 * dam, 18 * dam, 26 * dam);
       }
     });
   }
@@ -726,6 +759,15 @@
         lathe(stone, xp, 0, zp, base, 32, null, function (a, j) { return .75 + .25 * j / 6; });
         lathe(mesh("shaft"), xp, 0, zp, shaft, 48);
         lathe(stone, xp, 0, zp, cap, 64, leaves, function (a, j) { var l = leaves(a, j) - 1; return .72 + Math.min(.28, l * 1.6); });
+        // an icon on the pillar's face, turned to the people coming up the aisle
+        if (p2 > 0) {
+          var nn2 = norm([-s * .55, 0, -1]), rt = cross([0, 1, 0], [-nn2[0], 0, -nn2[2]]), iw = .4, ih = 1.08, iy = 2.9;
+          var ic2 = [xp + nn2[0] * .335, 0, zp + nn2[2] * .335], im = mesh(["iconS", "iconB", "iconC"][(p2 + (s > 0 ? 1 : 0)) % 3]);
+          var c0 = function (a, b) { return [ic2[0] + rt[0] * a, iy + b, ic2[2] + rt[2] * a]; };
+          panel(im, c0(-iw / 2, 0), c0(iw / 2, 0), c0(iw / 2, ih), c0(-iw / 2, ih));
+          box(gold, Math.min(c0(-iw / 2 - .03, 0)[0], c0(iw / 2 + .03, 0)[0]), iy - .04, Math.min(c0(-iw / 2 - .03, 0)[2], c0(iw / 2 + .03, 0)[2]) + .005,
+                    Math.max(c0(-iw / 2 - .03, 0)[0], c0(iw / 2 + .03, 0)[0]), iy - .01, Math.max(c0(-iw / 2 - .03, 0)[2], c0(iw / 2 + .03, 0)[2]) + .02);
+        }
         box(stone, xp - .49, 4.92, zp - .49, xp + .49, SPRING, zp + .49, [.85, 1]);
         // a vaulting shaft rising from the capital to the vault
         lathe(rib, s * (X - .06), 0, zp, [[.09, SPRING], [.09, VAULT - .1], [.13, VAULT - .05], [.13, VAULT + .02]], 16);
@@ -792,21 +834,78 @@
     box(gold, -.21, gy + .62, zTable + .48, .21, gy + .68, zTable + .54);
     points.push({ p: [0, gy + .7, zTable - .3], c: [1, .66, .36], i: 1.4, k: .35, candle: zTable });
 
-    // the reredos behind the altar: stone panelling with five starry niches, pinnacles and a gable
-    var zr = ZE - .5;
-    box(stone, -2.2, platY, zr, 2.2, platY + .8, zr + .4, [.7, 1]);
-    box(stone, -2.0, platY + .8, zr + .1, 2.0, 3.85, zr + .4);
-    [-1.5, -.75, 0, .75, 1.5].forEach(function (x, q) {
-      var w = q === 2 ? .62 : .5, h = q === 2 ? 2.4 : 2.0, y0 = platY + 1.0;
-      panel(niche, [x - w / 2, y0, zr + .09], [x + w / 2, y0, zr + .09], [x + w / 2, y0 + h, zr + .09], [x - w / 2, y0 + h, zr + .09]);
+    // white linen over the altar, falling a little over the frontal's top
+    box(mesh("linen"), -1.42, platY + 1.08, zTable - .07, 1.42, platY + 1.095, zTable + .69);
+    box(mesh("linen"), -1.42, platY + .86, zTable - .075, 1.42, platY + 1.095, zTable - .062);
+
+    // the retable behind the altar: gilded, with five saints under pointed arches
+    // (a larger one in the centre), colonnettes, pinnacles and a gable
+    var zr = ZE - .5, gilt = mesh("gilt");
+    box(gilt, -2.2, platY, zr, 2.2, platY + .8, zr + .4, [.7, 1]);
+    box(gilt, -2.0, platY + .8, zr + .1, 2.0, 3.85, zr + .4);
+    box(gold, -2.22, platY + .78, zr - .02, 2.22, platY + .84, zr + .1);
+    box(gold, -2.02, 3.82, zr + .04, 2.02, 3.88, zr + .14);
+    [[-1.5, .56, 1.52, "iconS"], [-.75, .56, 1.52, "iconB"], [0, .7, 1.9, "iconC"], [.75, .56, 1.52, "iconB"], [1.5, .56, 1.52, "iconS"]].forEach(function (ic) {
+      var x = ic[0], w = ic[1], h = ic[2], y0 = platY + 1.0, sp = h - pointed(0, w, 0, 1.6)(w / 2), arch = pointed(x - w / 2, x + w / 2, y0 + sp, 1.6);
+      panel(mesh(ic[3]), [x - w / 2, y0, zr + .09], [x + w / 2, y0, zr + .09], [x + w / 2, y0 + h, zr + .09], [x - w / 2, y0 + h, zr + .09]);
+      // a gilded moulding around each icon, following its arch
+      var out = [], q2;
+      for (q2 = 0; q2 <= 8; q2++) out.push([x - w / 2 - .03, y0 + sp * q2 / 8]);
+      for (q2 = 1; q2 < 24; q2++) { var xx = x - w / 2 + w * q2 / 24; out.push([xx, arch(xx) + .03]); }
+      for (q2 = 8; q2 >= 0; q2--) out.push([x + w / 2 + .03, y0 + sp * q2 / 8]);
+      sweep(gold, function (t) { var pt = out[Math.round(t * (out.length - 1))]; return [pt[0], pt[1], zr + .07]; }, out.length - 1, ring(.028, 6), function () { return [0, 0, 1]; });
     });
     [-2.0, -1.125, -.375, .375, 1.125, 2.0].forEach(function (x) {
-      lathe(rib, x, platY + .8, zr + .06, [[.06, 0], [.05, .06], [.045, 2.5], [.07, 2.56], [.07, 2.62]], 10);
-      lathe(stone, x, 3.85, zr + .2, [[.13, 0], [.13, .16], [.1, .2], [.1, .22], [.0, .72]], 8, function (a, j) { return j === 4 ? 1 : 1 + .12 * Math.pow(Math.abs(Math.cos(a * 2)), 4); });
-      lathe(gold, x, 4.57, zr + .2, [[0, 0], [.03, .02], [0, .07]], 6);
+      lathe(gold, x, platY + .8, zr + .06, [[.06, 0], [.05, .06], [.045, 2.5], [.07, 2.56], [.07, 2.62]], 10);
+      lathe(gilt, x, 3.85, zr + .2, [[.13, 0], [.13, .16], [.1, .2], [.1, .22], [.0, .72]], 8, function (a, j) { return j === 4 ? 1 : 1 + .12 * Math.pow(Math.abs(Math.cos(a * 2)), 4); });
+      lathe(gold, x, 4.57, zr + .2, [[0, 0], [.035, .02], [.03, .05], [0, .1]], 6);
     });
-    surf(stone, 16, 1, function (i, j) { var x = -.8 + 1.6 * i / 16; return [x, j ? 3.85 + .62 * (1 - Math.abs(x) / .8) : 3.85, zr + .12]; });
-    box(gold, -.03, 4.47, zr + .1, .03, 4.55 + .0, zr + .16);
+    surf(gilt, 16, 1, function (i, j) { var x = -.8 + 1.6 * i / 16; return [x, j ? 3.85 + .62 * (1 - Math.abs(x) / .8) : 3.85, zr + .12]; });
+    // a tall gilded cross rising from the gable, standing against the rose window
+    var cz = zr + .14, cy = 4.4;
+    box(gold, -.045, cy, cz - .035, .045, cy + 1.55, cz + .035);
+    box(gold, -.36, cy + 1.02, cz - .035, .36, cy + 1.11, cz + .035);
+    [[0, cy + 1.6], [-.41, cy + 1.065], [.41, cy + 1.065]].forEach(function (b) {
+      lathe(gold, b[0], b[1] - .06, cz, [[0, 0], [.05, .02], [.065, .06], [.05, .1], [0, .12]], 10);
+    });
+
+    // the sanctuary veil, drawn back to either side and tied, on gilded rods
+    var vz = ZC + .1, vTop = 4.6, vTie = 1.55;
+    [-1, 1].forEach(function (s) {
+      var inner = function (y) { return y > vTie ? 1.72 + (1.12 - 1.72) * Math.pow((y - vTie) / (vTop - vTie), 1.5) : 1.6 + (1.72 - 1.6) * y / vTie; };
+      surf(mesh("veil"), 28, 18, function (i, j) {
+        var u = i / 28, y = vTop * j / 18, xin = inner(y), wdt = X - .02 - xin;
+        return [s * (X - .02 - u * wdt), y, vz + (.025 + .06 * wdt) * Math.sin(u * Math.PI * 7) - .04 * u];
+      }, { uv: function (i, j) { return [i / 28, j / 18]; }, ao: function (i, j) { return .75 + .25 * Math.abs(Math.sin(i / 28 * Math.PI * 7)); } });
+      sweep(gold, function (t) { var x = X - .02 - (X - .02 - 1.67) * t; return [s * x, vTie, vz - .02 + .07 * Math.sin(t * Math.PI)]; }, 8, ring(.025, 6), function () { return [0, 1, 0]; });
+      sweep(gold, function (t) { return [s * (X - (X - 1.02) * t), vTop + .03, vz]; }, 1, ring(.024, 8), function () { return [0, 1, 0]; });
+      lathe(gold, s * 1.0, vTop - .03, vz, [[0, 0], [.045, .02], [.06, .06], [.045, .1], [0, .12]], 10);
+    });
+
+    // wedding flowers: white posies on the pew ends down the aisle, and two
+    // tall urns of blooms by the sanctuary steps
+    var leafM = mesh("leaf"), nb = 0;
+    function bloom(x, y, z, r) { lathe(mesh(nb++ % 3 === 1 ? "blush" : "bloom"), x, y, z, [[0, -r], [r * .75, -r * .7], [r, -r * .1], [r * .8, r * .55], [r * .35, r * .9], [0, r * .75]], 8); }
+    function leaf(x, y, z, dx, dy, dz) { sweep(leafM, function (t) { return [x + dx * t, y + dy * t - .03 * t * t, z + dz * t]; }, 3, [[-.018, 0], [0, .006], [.018, 0], [0, -.006]], null); }
+    for (var pr = M.pewFrom; pr <= M.pewTo + .01; pr += 1) {
+      [-1, 1].forEach(function (s) {
+        var px = s * (M.pewIn - .055), py = .86, pz = pr + .26;
+        [[0, 0, .034], [.045, -.03, .026], [.04, .035, .026], [-.04, .03, .025], [-.035, -.035, .026], [.012, .07, .022], [-.075, -.01, .02]].forEach(function (b, q) {
+          bloom(px - s * (q ? .015 : .03), py + b[0], pz + b[1], b[2]);
+        });
+        leaf(px, py - .03, pz, -s * .02, -.17, .06); leaf(px, py - .03, pz, -s * .02, -.15, -.08); leaf(px, py + .02, pz, -s * .01, .05, .13);
+        leaf(px, py - .02, pz, -s * .01, -.24, .0); leaf(px, py, pz, -s * .01, .06, -.12);
+      });
+    }
+    [-1, 1].forEach(function (s) {
+      var ux = s * 1.9, uz = M.coupleZ + .2;
+      lathe(gold, ux, 0, uz, [[0, 0], [.2, 0], [.2, .05], [.08, .12], [.06, .55], [.12, .62], [.24, .75], [.26, .82], [.2, .86]], 16);
+      for (var fb = 0; fb < 34; fb++) {
+        var a = fb * 2.39996, rr = .28 * Math.sqrt((fb + .5) / 34), hh = .95 + .32 * Math.sqrt(1 - rr * rr / .09);
+        bloom(ux + Math.cos(a) * rr, hh, uz + Math.sin(a) * rr, .05 + .012 * ((fb * 7) % 3) / 2);
+      }
+      for (var lf = 0; lf < 11; lf++) { var la2 = lf / 11 * Math.PI * 2; leaf(ux, .92, uz, Math.cos(la2) * .4, -.26 - .1 * (lf % 2), Math.sin(la2) * .4); }
+    });
 
     // two tall candle stands before the steps, where the couple will stand
     [-1, 1].forEach(function (s) {
@@ -877,6 +976,7 @@
     // the sanctuary is the brightest place; the rose window glows into it
     points.push({ p: [0, 4.2, 25.2], c: [1, .74, .48], i: 2.4, k: .06, still: true });
     points.push({ p: [0, RC[1], ZE - .6], c: [1, .7, .45], i: 1.2, k: .12, still: true, rose: true });
+    points.push({ p: [0, 2.4, ZE - 2.2], c: [1, .72, .42], i: .9, k: .5, candle: ZE - 2 });
 
     // light: daylight beams from the left clerestory and aisle windows, and soft halos at the glass
     for (var bb = 0; bb < M.piers - 1; bb++) {
@@ -912,6 +1012,14 @@
     ["marble", [1.05, 1.02, 1], "marble", 1, 1 / 2.4, .5, 60, 0, 0],
     ["niche", [1, 1, 1], "niche", 2, 1, .2, 20, .25, 0],
     ["frontal", [1, 1, 1], "frontal", 2, 1, .15, 16, .05, 0],
+    ["gilt", [1.05, .8, .48], "stone", 1, .5, .7, 26, .03, .6],
+    ["linen", [1.1, 1.08, 1.02], "white", 0, 1, .15, 12, .12, 0],
+    ["veil", [1, 1, 1], "veil", 2, 1, .12, 10, .02, 0],
+    ["bloom", [1.05, 1.02, .98], "white", 0, 1, .2, 14, .14, 0],
+    ["blush", [1.05, .8, .78], "white", 0, 1, .2, 14, .12, 0],
+    ["leaf", [.24, .4, .2], "white", 0, 1, .25, 18, .02, 0],
+    ["iconC", [1, 1, 1], "iconC", 2, 1, .35, 24, .3, 0], ["iconS", [1, 1, 1], "iconS", 2, 1, .35, 24, .3, 0],
+    ["iconB", [1, 1, 1], "iconB", 2, 1, .35, 24, .3, 0],
     ["carpet", [.62, .57, .57], "carpet", 2, 1, .05, 6, 0, 0],
     ["floor", [.95, .95, .95], "marble", 3, 1 / 2.4, .38, 50, 0, 0],
     ["vault", [1.04, 1, .95], "stone", 1, .5, .02, 8, 0, 0],
@@ -1250,6 +1358,7 @@
       function () { tex.wood = texture(woodTex(), true); tex.carpet = texture(carpetTex(), true); },
       function () { tex.stars = texture(starTex(), true); tex.niche = texture(nicheTex()); tex.frontal = texture(frontalTex()); },
       function () { tex.rose = texture(roseTex()); },
+      function () { tex.veil = texture(veilTex()); tex.iconC = texture(iconTex(.7, 1.9, 0)); tex.iconS = texture(iconTex(.56, 1.52, 1)); tex.iconB = texture(iconTex(.56, 1.52, 2)); },
       function () { for (var v = 0; v < 3; v++) tex["glassC" + v] = texture(lancetTex(.92, 1.25 + rise(.92), 1.25, v, 128, 512)); },
       function () { tex.glassA0 = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7, 0, 256, 1024)); },
       function () { tex.glassA1 = texture(lancetTex(1.1, 2.7 + rise(1.1), 2.7, 1, 256, 1024)); },

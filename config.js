@@ -1,5 +1,5 @@
 /* =============================================================================
-   SOFIA & JIBIN — WEDDING CONFIGURATION
+   JIBIN & SOFIA — WEDDING CONFIGURATION
    -----------------------------------------------------------------------------
    This is the ONLY file you need to edit to change wedding information.
 
@@ -16,7 +16,7 @@ window.WEDDING = {
 
   /* ---------------------------------------------------------------- COUPLE */
   couple: {
-    // Shown in this order everywhere: the bride first, then the groom.
+    // Shown in this order everywhere: the groom first, then the bride.
     bride: "Sofia",                 // short names: opening screen & closing
     groom: "Jibin",
     brideFull: "Sofia John",        // full names: invitation card
@@ -25,7 +25,7 @@ window.WEDDING = {
     brideParents: "Mr. Saji & Mrs. Mini",
     groomParents: "Mr. Varghese K. V. & Mrs. Aswathy Varghese",
     // Small monogram letters shown in the corner and on the opening curtain.
-    monogram: ["S", "J"],
+    monogram: ["J", "S"],
   },
 
   /* ---------------------------------------------------------------- INVITE */
