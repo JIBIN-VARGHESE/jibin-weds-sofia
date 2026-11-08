@@ -1097,14 +1097,14 @@
         var z0 = M.firstPier + bay * M.bay;
         // over each arch: a thick mass along the string course, and strands pouring down,
         // longest over the middle of the arch, short where the pier tops are in the way
-        mass([xw, COURSE + .12, z0], [0, 0, 1], M.bay * .7, .6);
-        for (var sn = 0; sn < 14; sn++) {
+        mass([xw, COURSE + .12, z0 + M.bay * .25], [0, 0, 1], M.bay * .5, .5);
+        for (var sn = 0; sn < 9; sn++) {
           var zz = z0 + .1 + rv() * (M.bay - .2), dp = Math.min(Math.abs(zz - z0), Math.abs(zz - z0 - M.bay));
           var len = dp < .6 ? .5 + rv() * 1.6 : .9 + Math.pow(rv(), .7) * 2.7;
           hang([xw, COURSE + .05 - rv() * .2, zz], out, len);
         }
         // a little spilling from the clerestory sill
-        for (var sl = 0; sl < 2; sl++) hang([xw, COURSE + .42, z0 + M.bay / 2 + (rv() - .5) * .8], out, .3 + rv() * .7, .13);
+        for (var sl = 0; sl < 1; sl++) hang([xw, COURSE + .42, z0 + M.bay / 2 + (rv() - .5) * .8], out, .3 + rv() * .7, .13);
         // the outer aisle walls, beside the windows
         [z0 + .3, z0 + M.bay - .3].forEach(function (za) { mass([s * (M.aisleX - .05), 7.1, za - .3], [0, 0, 1], .6, .3); for (var aw = 0; aw < 3; aw++) hang([s * (M.aisleX - .05), 7.05, za + (rv() - .5) * .5], out, 1 + rv() * 3); });
       }
@@ -1118,7 +1118,7 @@
       hang([xp - s * .4, SPRING - .05, zp - .2], [-s * .6, 0, -.8], .4 + rv() * .8, .13);
     });
     // tendrils hanging from the vault's ribs, like the greenery overhead in the reference
-    for (var rb = 1; rb < M.piers; rb++) for (var tn = 0; tn < 6; tn++) {
+    for (var rb = 1; rb < M.piers; rb++) for (var tn = 0; tn < 3; tn++) {
       var xv = (rv() * 2 - 1) * 2.0;
       hang([xv, vaultY(xv) - .1, M.firstPier + rb * M.bay - .05], [-xv * .15, 0, -1], .4 + Math.pow(rv(), 1.3) * 1.5, .14);
     }
